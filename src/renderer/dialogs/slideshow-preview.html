@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Video Önizleme</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            color: #fff;
+            font-family: sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .video-container {
+            flex: 1;
+            position: relative;
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #canvas-area {
+            position: relative;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .slide-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.3s;
+            object-fit: contain;
+        }
+
+        .slide-image.fill {
+            object-fit: cover;
+        }
+
+        .slide-image.active {
+            opacity: 1;
+        }
+
+        .text-overlay {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            text-align: center;
+            display: none;
+            z-index: 10;
+            padding: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+        }
+
+        .text-overlay.visible {
+            display: block;
+        }
+
+        .controls {
+            background: #1a1a1a;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border-top: 1px solid #333;
+        }
+
+        .play-btn {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .play-btn:disabled {
+            background: #444;
+        }
+
+        .progress-container {
+            flex: 1;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #0078d4;
+            width: 0%;
+            border-radius: 3px;
+        }
+
+        .time-display {
+            font-size: 14px;
+            min-width: 120px;
+        }
+
+        .status-msg {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 100;
+        }
+
+        #loading-screen {
+            position: absolute;
+            inset: 0;
+            background: #000;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading-screen">
+        <div style="font-size: 24px; margin-bottom: 10px;">Yükleniyor...</div>
+        <div id="load-info">Resimler hazırlanıyor.</div>
+    </div>
+
+    <div id="live-region" aria-live="assertive" style="position: absolute; left: -9999px;"></div>
+    <div class="status-msg" id="status-msg">Hazırlanıyor...</div>
+
+    <div class="video-container">
+        <div id="canvas-area"></div>
+    </div>
+
+    <div class="controls">
+        <button id="play-btn" class="play-btn" disabled>Oynat</button>
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="time-display" id="time-display">00:00 / 00:00</div>
+        <button id="close-btn" class="play-btn" style="background: #444;">Kapat</button>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        let projectData, previewOptions, audio, isPlaying = false, currentTime = 0, duration = 0, startTime = 0, endTime = 0, imageTimings = [];
+
+        ipcRenderer.on('preview-init', async (event, data) => {
+            projectData = data.projectData;
+            previewOptions = data.options;
+            await setupPreview();
+        });
+
+        async function setupPreview() {
+            // Preload images
+            const imagesToLoad = projectData.images.length;
+            let loaded = 0;
+            const promises = projectData.images.map(img => {
+                return new Promise(res => {
+                    const i = new Image();
+                    i.onload = () => { loaded++; document.getElementById('load-info').textContent = `Resimler yükleniyor: ${loaded}/${imagesToLoad}`; res(); };
+                    i.onerror = res;
+                    i.src = img.path;
+                });
+            });
+            await Promise.all(promises);
+            document.getElementById('loading-screen').style.display = 'none';
+
+            // Setup Canvas
+            const [w, h] = projectData.aspectRatio === '16:9' ? [1280, 720] : [720, 1280];
+            const scale = Math.min((window.innerWidth * 0.9) / w, (window.innerHeight * 0.8) / h);
+            const canvasArea = document.getElementById('canvas-area');
+            canvasArea.style.width = (w * scale) + 'px';
+            canvasArea.style.height = (h * scale) + 'px';
+
+            // Timings
+            let t = 0;
+            imageTimings = projectData.images.map(img => {
+                const o = { ...img, start: t, end: t + img.duration };
+                t += img.duration;
+                return o;
+            });
+
+            // Target scope
+            if (previewOptions.mode === 'image') {
+                const it = imageTimings.find(i => i.id === previewOptions.targetId);
+                startTime = it.start; endTime = it.end;
+            } else if (previewOptions.mode === 'text') {
+                const txt = projectData.textOverlays.find(x => x.id === previewOptions.targetId);
+                const targets = imageTimings.filter(i => txt.targetImages.includes(i.id));
+                startTime = Math.min(...targets.map(i => i.start));
+                endTime = Math.max(...targets.map(i => i.end));
+            } else if (previewOptions.mode === 'audio') {
+                startTime = 0; endTime = projectData.totalDuration;
+            } else {
+                startTime = 0; endTime = projectData.totalDuration;
+            }
+
+            duration = endTime - startTime;
+            if (duration <= 0) duration = 0.1;
+
+            renderElements(canvasArea, scale / (projectData.aspectRatio === '16:9' ? (1280 / 1920) : (720 / 1080))); // fix scale for font
+
+            if (projectData.audioTracks.length > 0) {
+                audio = new Audio(projectData.audioTracks[0].path);
+                audio.currentTime = startTime;
+            }
+
+            document.getElementById('play-btn').disabled = false;
+            document.getElementById('status-msg').textContent = previewOptions.mode.toUpperCase() + ' Önizleme';
+            updateUI();
+
+            // Otomatik oynatmayı başlat
+            setTimeout(() => {
+                play();
+                announce(`Önizleme otomatik başlatıldı. Durdurmak için Boşluk, kapatmak için Escape tuşuna basın.`);
+            }, 500);
+        }
+
+        function renderElements(container, fontScale) {
+            container.innerHTML = '';
+            projectData.images.forEach(img => {
+                const el = document.createElement('img');
+                el.src = img.path; el.id = 'img-' + img.id; el.className = 'slide-image' + (projectData.fillFrame ? ' fill' : '');
+                container.appendChild(el);
+            });
+            projectData.textOverlays.forEach(txt => {
+                const el = document.createElement('div');
+                el.id = 'txt-' + txt.id; el.className = 'text-overlay'; el.textContent = txt.content;
+                el.style.fontSize = (txt.fontSize || 48) * (parseFloat(container.style.height) / 1080) + 'px';
+                el.style.color = txt.fontColor || 'white';
+                if (txt.background === 'black') el.style.background = 'rgba(0,0,0,0.6)';
+                else if (txt.background === 'white') el.style.background = 'rgba(255,255,255,0.6)', el.style.color = 'black';
+
+                if (txt.position === 'top') el.style.top = '10%';
+                else if (txt.position === 'center') el.style.top = '50%', el.style.transform = 'translate(-50%, -50%)';
+                else el.style.bottom = '10%';
+                container.appendChild(el);
+            });
+        }
+
+        function updateUI() {
+            const absT = startTime + currentTime;
+            document.getElementById('progress-bar').style.width = (currentTime / duration * 100) + '%';
+            document.getElementById('time-display').textContent = formatTime(currentTime) + ' / ' + formatTime(duration);
+
+            imageTimings.forEach(it => {
+                const el = document.getElementById('img-' + it.id);
+                if (absT >= it.start && absT < it.end) el.classList.add('active'); else el.classList.remove('active');
+            });
+
+            projectData.textOverlays.forEach(txt => {
+                const el = document.getElementById('txt-' + txt.id);
+                let show = false;
+                txt.targetImages.forEach(id => {
+                    const it = imageTimings.find(x => x.id === id);
+                    if (absT >= it.start && absT < it.end) show = true;
+                });
+                if (show) el.classList.add('visible'); else el.classList.remove('visible');
+            });
+        }
+
+        function formatTime(s) {
+            const m = Math.floor(s / 60), sc = Math.floor(s % 60);
+            return m.toString().padStart(2, '0') + ':' + sc.toString().padStart(2, '0');
+        }
+
+        let lastTick = 0;
+        function tick(now) {
+            if (!isPlaying) return;
+            const delta = (now - lastTick) / 1000;
+            lastTick = now;
+            currentTime += delta;
+            if (currentTime >= duration) { currentTime = duration; pause(); }
+            updateUI();
+            if (isPlaying) requestAnimationFrame(tick);
+        }
+
+        function play() {
+            if (currentTime >= duration) currentTime = 0;
+            isPlaying = true; document.getElementById('play-btn').textContent = 'Duraklat';
+            if (audio) { audio.currentTime = startTime + currentTime; audio.play(); }
+            lastTick = performance.now();
+            requestAnimationFrame(tick);
+        }
+
+        function pause() { isPlaying = false; document.getElementById('play-btn').textContent = 'Oynat'; if (audio) audio.pause(); }
+
+        document.getElementById('play-btn').onclick = () => isPlaying ? pause() : play();
+        document.getElementById('close-btn').onclick = () => { if (audio) audio.pause(); window.close(); };
+        document.getElementById('progress-container').onclick = (e) => {
+            const pct = e.offsetX / e.currentTarget.offsetWidth;
+            currentTime = pct * duration;
+            if (audio) audio.currentTime = startTime + currentTime;
+            updateUI();
+        };
+
+        // Klavye kısayolları (Escape ve Boşluk)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (audio) audio.pause();
+                window.close();
+            } else if (e.key === ' ') {
+                e.preventDefault();
+                isPlaying ? pause() : play();
+            }
+        });
+    </script>
+</body>
+
+</html>

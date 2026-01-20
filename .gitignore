@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp files
+temp_*.mp4
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Test files
+*.eng
+*.kve
+test_*.mp3
+
+# IDE
+.vscode/
+.idea/
+
+# Backup folders
+backup_*/
+
+# Mac test package (local only)
+Mac_Test_Paketi/
+Mac_Test_Paketi.zip
+EngelsizVideoDuzenleyici_Mac_Test.zip
+
+# Sample videos
+*.mp4
+!src/**/*.mp4
+
+# Agent files
+.agent/
+
+# Config (contains API keys)
+.korcul-video-editor/

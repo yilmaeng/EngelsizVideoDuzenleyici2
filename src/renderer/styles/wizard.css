@@ -1,0 +1,249 @@
+/* =====================================
+   Wizard Dialog Styles
+   ===================================== */
+
+.wizard-dialog {
+    min-width: 500px;
+    max-width: 700px;
+}
+
+.wizard-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-small);
+}
+
+.wizard-steps .step {
+    color: var(--text-secondary);
+    font-weight: bold;
+}
+
+.wizard-steps .step.active {
+    color: var(--focus-color);
+}
+
+.wizard-steps .separator {
+    color: var(--text-secondary);
+}
+
+.wizard-step {
+    min-height: 250px;
+}
+
+/* Radio Option Styling */
+.radio-group-vertical {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.radio-group-vertical legend {
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+    font-weight: bold;
+}
+
+.radio-option {
+    display: flex !important;
+    /* Override default label styling if needed */
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all var(--transition-speed);
+}
+
+.radio-option:hover {
+    background-color: var(--accent-secondary);
+    border-color: var(--accent-secondary);
+}
+
+.radio-option:focus-within {
+    outline: 2px solid var(--focus-color);
+    border-color: var(--focus-color);
+}
+
+.radio-option input[type="radio"] {
+    margin-top: 4px;
+    accent-color: var(--accent-primary);
+    width: 18px;
+    height: 18px;
+}
+
+.option-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.option-content strong {
+    margin-bottom: 4px;
+    color: var(--text-primary);
+}
+
+.option-content .description {
+    font-size: var(--font-size-small);
+    color: var(--text-secondary);
+}
+
+/* Source Detail */
+.source-detail {
+    margin-top: 16px;
+    padding: 16px;
+    background-color: var(--bg-tertiary);
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+}
+
+.file-status {
+    display: inline-block;
+    margin-left: 10px;
+    color: var(--text-secondary);
+    font-style: italic;
+    word-break: break-all;
+}
+
+/* Buttons */
+.action-buttons-group {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.action-button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+}
+
+.action-button.primary-action {
+    background-color: var(--accent-secondary);
+    color: white;
+}
+
+.action-button:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--focus-color);
+}
+
+.icon {
+    font-size: 1.2em;
+}
+
+.feedback-box {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: var(--bg-secondary);
+    border-left: 3px solid var(--accent-primary);
+    font-size: var(--font-size-small);
+}
+
+.two-col {
+    display: flex;
+    gap: 16px;
+}
+
+.two-col>div {
+    flex: 1;
+}
+
+.small-btn {
+    margin-top: 6px;
+    padding: 4px 8px;
+    font-size: var(--font-size-small);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.7);
+    }
+
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(233, 69, 96, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(233, 69, 96, 0);
+    }
+}
+
+.pulse-animation {
+    animation: pulse 1.5s infinite;
+    background-color: var(--accent-primary) !important;
+    border-color: red !important;
+}
+
+/* =====================================
+   Video Layer Wizard Additions
+   ===================================== */
+
+.info-group {
+    background-color: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.info-group p {
+    margin: 4px 0;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-primary);
+}
+
+.hint {
+    font-size: var(--font-size-small);
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* Volume sliders */
+input[type="range"] {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    accent-color: var(--accent-primary);
+}
+
+/* Summary section */
+#vl-summary {
+    background-color: var(--accent-tertiary, #1a3a3a);
+    border-left: 4px solid var(--accent-primary);
+}
+
+#vl-summary h4 {
+    margin: 0 0 8px 0;
+    color: var(--accent-primary);
+}
+
+#vl-summary p {
+    margin: 0;
+    line-height: 1.6;
+}

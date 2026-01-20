@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yazı Ekle</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #fff;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #b0b0b0;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #2d2d2d;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        input[type="range"] {
+            padding: 0;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-group input {
+            width: auto;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+        }
+
+        .row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .row .form-group {
+            flex: 1;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #444;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button.primary {
+            background: #0078d4;
+            color: white;
+        }
+
+        button.secondary {
+            background: #444;
+            color: #fff;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        #tts-options {
+            background: #252525;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .ai-section {
+            background: #1a2a3a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border: 1px solid #3a5a7a;
+        }
+
+        .ai-section h3 {
+            margin: 0 0 15px 0;
+            color: #7ab3ff;
+            font-size: 16px;
+        }
+
+        .ai-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        #ai-response {
+            width: 100%;
+            background: #0a1520;
+            color: #e0e0e0;
+            border: 1px solid #3a5a7a;
+            padding: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+        }
+
+        .followup-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .followup-section label {
+            white-space: nowrap;
+        }
+
+        .followup-section input {
+            flex: 1;
+        }
+
+        #ai-loading {
+            color: #7ab3ff;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Yazı Ekle</h2>
+
+    <form id="text-form">
+        <!-- Metin -->
+        <div class="form-group">
+            <label for="text-content">Metin:</label>
+            <textarea id="text-content" placeholder="Görüntülenecek metni yazın..." autofocus></textarea>
+        </div>
+
+        <div class="row">
+            <!-- Yazı Tipi -->
+            <div class="form-group">
+                <label for="font">Yazı Tipi:</label>
+                <select id="font">
+                    <option value="arial">Arial</option>
+                    <option value="times">Times New Roman</option>
+                    <option value="courier">Courier New</option>
+                    <option value="verdana">Verdana</option>
+                    <option value="tahoma">Tahoma</option>
+                </select>
+            </div>
+
+            <!-- Yazı Boyutu -->
+            <div class="form-group">
+                <label for="size">Boyut:</label>
+                <select id="size">
+                    <option value="24">24</option>
+                    <option value="32">32</option>
+                    <option value="48" selected>48</option>
+                    <option value="64">64</option>
+                    <option value="72">72</option>
+                    <option value="96">96</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Yazı Rengi -->
+            <div class="form-group">
+                <label for="color">Yazı Rengi:</label>
+                <select id="color">
+                    <option value="white">Beyaz</option>
+                    <option value="black">Siyah</option>
+                    <option value="yellow">Sarı</option>
+                    <option value="red">Kırmızı</option>
+                    <option value="green">Yeşil</option>
+                    <option value="blue">Mavi</option>
+                </select>
+            </div>
+
+            <!-- Arka Plan -->
+            <div class="form-group">
+                <label for="bg">Arka Plan:</label>
+                <select id="bg">
+                    <option value="none">Yok (Şeffaf)</option>
+                    <option value="black@0.5">Siyah (Yarı Saydam)</option>
+                    <option value="black">Siyah</option>
+                    <option value="white@0.5">Beyaz (Yarı Saydam)</option>
+                    <option value="white">Beyaz</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Gölge -->
+            <div class="form-group">
+                <label for="shadow">Gölge:</label>
+                <select id="shadow">
+                    <option value="none">Yok</option>
+                    <option value="small">Hafif</option>
+                    <option value="medium">Orta</option>
+                    <option value="large">Güçlü</option>
+                </select>
+            </div>
+
+            <!-- Konum -->
+            <div class="form-group">
+                <label for="position">Konum:</label>
+                <select id="position">
+                    <option value="top-left">Sol Üst</option>
+                    <option value="top-center">Üst Orta</option>
+                    <option value="top-right">Sağ Üst</option>
+                    <option value="middle-left">Sol Orta</option>
+                    <option value="center">Tam Orta</option>
+                    <option value="middle-right">Sağ Orta</option>
+                    <option value="bottom-left">Sol Alt</option>
+                    <option value="bottom-center" selected>Alt Orta</option>
+                    <option value="bottom-right">Sağ Alt</option>
+                </select>
+            </div>
+
+            <!-- Geçiş -->
+            <div class="form-group">
+                <label for="transition">Geçiş:</label>
+                <select id="transition">
+                    <option value="none">Anında</option>
+                    <option value="fade">Solarak Gir/Çık</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Süre -->
+        <div class="form-group">
+            <label for="duration">Süre (saniye):</label>
+            <input type="number" id="duration" value="5" min="1" max="300">
+        </div>
+
+        <!-- Tüm video boyunca -->
+        <div class="form-group checkbox-group">
+            <input type="checkbox" id="whole-video">
+            <label for="whole-video">Tüm video boyunca göster (0'dan sona)</label>
+        </div>
+
+
+
+        <!-- TTS -->
+        <div class="form-group checkbox-group">
+            <input type="checkbox" id="tts-enable">
+            <label for="tts-enable">Yazıyı seslendir (TTS)</label>
+        </div>
+
+        <div id="tts-options" class="style-box" style="display: none;">
+            <!-- Dil/Ses -->
+            <div class="form-group">
+                <label for="tts-voice">Seslendirmen:</label>
+                <select id="tts-voice">
+                    <option value="">Varsayılan (Türkçe)</option>
+                </select>
+            </div>
+
+            <!-- Hız ve TTS Ses -->
+            <div class="row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="tts-speed">Hız: <span id="tts-speed-value">%100</span></label>
+                    <input type="range" id="tts-speed" min="50" max="200" value="100">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="tts-volume">TTS Sesi: <span id="tts-volume-value">%100</span></label>
+                    <input type="range" id="tts-volume" min="0" max="100" value="100">
+                </div>
+            </div>
+
+            <!-- Video Ses ve Dinle Butonu -->
+            <div class="row" style="align-items: flex-end;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="video-volume">Video Sesi (Mix Oranı): <span id="video-volume-value">%100</span></label>
+                    <input type="range" id="video-volume" min="0" max="100" value="100">
+                </div>
+                <div class="form-group" style="flex: 0 0 auto; margin-left: 10px;">
+                    <button type="button" id="tts-preview-btn" class="secondary" style="height: 38px; min-width: 80px;">
+                        <i class="fas fa-play"></i> Dinle
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yapay Zeka Geri Bildirimi -->
+        <div class="ai-section">
+            <h3>Yapay Zeka Geri Bildirimi</h3>
+
+            <!-- Model Seçimi -->
+            <div class="form-group">
+                <label for="gemini-model">Gemini Modeli:</label>
+                <select id="gemini-model">
+                    <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash (Önerilen)</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Kota Dostu)</option>
+                </select>
+            </div>
+
+            <!-- API Anahtarı (ilk kullanımda gösterilir) -->
+            <div id="api-key-section" class="form-group" style="display: none;">
+                <label for="gemini-api-key">Gemini API Anahtarı:</label>
+                <input type="password" id="gemini-api-key" placeholder="API anahtarınızı girin">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="save-api-key" checked>
+                    <label for="save-api-key">Bu anahtarı kaydet</label>
+                </div>
+            </div>
+
+            <!-- AI Butonları -->
+            <div class="ai-buttons">
+                <button type="button" id="ai-feedback-btn" class="secondary">Mevcut Durumu Yorumla</button>
+                <button type="button" id="ai-suggest-btn" class="secondary" style="background-color: #2b5d2b;">Stil ve
+                    Konum Öner</button>
+                <button type="button" id="change-api-key-btn" class="secondary" style="font-size: 12px;">API
+                    Anahtarı</button>
+            </div>
+
+            <!-- AI Yanıt Alanı -->
+            <div id="ai-response-section" class="form-group" style="display: none;">
+                <label for="ai-response">Yapay Zeka Yanıtı:</label>
+                <!-- Analiz edilen görüntü önizlemesi -->
+                <div id="ai-preview-container" style="display: none; margin-bottom: 10px; text-align: center;"></div>
+                <textarea id="ai-response" readonly rows="6"></textarea>
+                <!-- Ekran okuyucu için canlı duyuru alanı -->
+                <div id="ai-live-region" aria-live="assertive" aria-atomic="true"
+                    style="position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden;"></div>
+
+                <!-- Takip Sorusu -->
+                <div class="followup-section">
+                    <label for="followup-question">Ek Soru Sor:</label>
+                    <input type="text" id="followup-question" placeholder="Sorunuzu yazın...">
+                    <button type="button" id="ask-followup-btn" class="secondary">Sor</button>
+                </div>
+            </div>
+
+            <!-- Yükleniyor göstergesi -->
+            <div id="ai-loading" style="display: none;">
+                <p>Yapay zeka yanıtı bekleniyor...</p>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button type="button" class="secondary" id="close-btn">Kapat</button>
+            <button type="button" class="primary" id="apply-btn">Videoya Ekle</button>
+            <button type="button" class="primary" id="add-to-list-btn">Listeye Ekle</button>
+        </div>
+    </form>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        let editingId = null; // Düzenleme modunda öğe ID'si
+
+        // Sayfa yüklendiğinde TTS seslerini yükle
+        async function loadTtsVoices() {
+            try {
+                const result = await ipcRenderer.invoke('get-tts-voices');
+                console.log('TTS sesleri:', result);
+
+                if (result.success && result.voices && result.voices.length > 0) {
+                    const voiceSelect = document.getElementById('tts-voice');
+
+                    // Mevcut seçenekleri temizle (Varsayılan hariç)
+                    voiceSelect.innerHTML = '<option value="">Varsayılan (Türkçe)</option>';
+
+                    // Yeni sesleri ekle
+                    result.voices.forEach(voice => {
+                        if (voice && voice !== 'Varsayılan') {
+                            const option = document.createElement('option');
+                            option.value = voice;
+                            option.textContent = voice;
+                            voiceSelect.appendChild(option);
+                        }
+                    });
+
+                    console.log('TTS sesleri yüklendi:', result.voices.length);
+                }
+            } catch (error) {
+                console.error('TTS sesleri yüklenemedi:', error);
+            }
+        }
+
+        // Sayfa yüklendiğinde çağır
+        loadTtsVoices();
+
+        // TTS checkbox toggle
+        document.getElementById('tts-enable').addEventListener('change', (e) => {
+            document.getElementById('tts-options').style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        // Slider value displays
+        document.getElementById('tts-speed').addEventListener('input', (e) => {
+            document.getElementById('tts-speed-value').textContent = `%${e.target.value}`;
+        });
+        document.getElementById('tts-volume').addEventListener('input', (e) => {
+            document.getElementById('tts-volume-value').textContent = `%${e.target.value}`;
+        });
+        document.getElementById('video-volume').addEventListener('input', (e) => {
+            document.getElementById('video-volume-value').textContent = `%${e.target.value}`;
+        });
+
+        // TTS Önizleme Butonu
+        document.getElementById('tts-preview-btn').addEventListener('click', async () => {
+            const text = document.getElementById('text-content').value.trim();
+            if (!text) {
+                alert('Seslendirmek için bir yazı girin.');
+                return;
+            }
+
+            const btn = document.getElementById('tts-preview-btn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.textContent = 'Oluşturuluyor...';
+
+            try {
+                const voice = document.getElementById('tts-voice').value;
+                // Değerler 0-100 veya 0.5-2.0 arası değişmeli.
+                // HTML range: speed 50-200 -> 0.5-2.0
+                // HTML range: volume 0-100 -> 0-100
+                const speed = parseInt(document.getElementById('tts-speed').value) / 100;
+                const volume = parseInt(document.getElementById('tts-volume').value); // API 0-100 bekliyor
+
+                console.log('TTS Preview isteği:', { text: text.substring(0, 30), voice, speed, volume });
+
+                const result = await ipcRenderer.invoke('preview-tts', { text, voice, speed, volume });
+
+                console.log('TTS Preview sonucu:', result.success, result.audioPath || result.spokeDirect || result.error);
+
+                if (result.success && result.audioPath) {
+                    // Dosya yolunu file:// URL'e çevir
+                    const fileUrl = 'file:///' + result.audioPath.replace(/\\/g, '/');
+                    console.log('TTS Audio URL:', fileUrl);
+
+                    const audio = new Audio(fileUrl);
+
+                    audio.onerror = (e) => {
+                        console.error('Audio oynatma hatası:', e);
+                        alert('Ses oynatılamadı');
+                    };
+
+                    audio.onended = () => {
+                        console.log('TTS oynatma tamamlandı');
+                    };
+
+                    btn.textContent = 'Oynatılıyor...';
+                    await audio.play();
+                } else if (result.success && result.spokeDirect) {
+                    // Doğrudan hoparlörden okuma (say.js fallback)
+                    btn.textContent = 'Okunuyor...';
+                    console.log('TTS doğrudan hoparlörden okuma başlatıldı');
+                } else {
+                    alert('Ses oluşturulamadı: ' + (result.error || 'Bilinmeyen hata'));
+                }
+            } catch (e) {
+                console.error('TTS Preview hatası:', e);
+                alert('Hata: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+
+        // Whole video checkbox
+        document.getElementById('whole-video').addEventListener('change', (e) => {
+            document.getElementById('duration').disabled = e.target.checked;
+        });
+
+
+
+        // Form verilerini topla
+        function collectFormData() {
+            const text = document.getElementById('text-content').value.trim();
+            if (!text) {
+                document.getElementById('text-content').focus();
+                return null;
+            }
+
+            // Duration belirleme
+            let duration;
+            if (document.getElementById('whole-video').checked) {
+                duration = 'whole'; // Tüm video (0'dan sona)
+            } else {
+                duration = parseInt(document.getElementById('duration').value);
+            }
+
+            return {
+                text: text,
+                font: document.getElementById('font').value,
+                fontSize: parseInt(document.getElementById('size').value),
+                fontColor: document.getElementById('color').value,
+                background: document.getElementById('bg').value,
+                shadow: document.getElementById('shadow').value,
+                position: document.getElementById('position').value,
+                transition: document.getElementById('transition').value,
+                duration: duration,
+                ttsEnabled: document.getElementById('tts-enable').checked,
+                ttsVoice: document.getElementById('tts-voice').value || null,
+                ttsSpeed: parseInt(document.getElementById('tts-speed').value) / 100,
+                ttsVolume: parseInt(document.getElementById('tts-volume').value) / 100,
+                videoVolume: parseInt(document.getElementById('video-volume').value) / 100,
+                startTime: window.startTime || 0
+            };
+        }
+
+        // Formu temizle
+        function clearForm() {
+            document.getElementById('text-content').value = '';
+            document.getElementById('font').value = 'arial';
+            document.getElementById('size').value = '48';
+            document.getElementById('color').value = 'white';
+            document.getElementById('bg').value = 'none';
+            document.getElementById('shadow').value = 'none';
+            document.getElementById('position').value = 'bottom';
+            document.getElementById('transition').value = 'none';
+            document.getElementById('duration').value = '5';
+            document.getElementById('duration').disabled = false;
+            document.getElementById('whole-video').checked = false;
+
+            document.getElementById('tts-enable').checked = false;
+            document.getElementById('tts-options').style.display = 'none';
+            document.getElementById('tts-speed').value = '100';
+            document.getElementById('tts-volume').value = '100';
+            document.getElementById('video-volume').value = '100';
+            document.getElementById('tts-speed-value').textContent = '%100';
+            document.getElementById('tts-volume-value').textContent = '%100';
+            document.getElementById('video-volume-value').textContent = '%100';
+            editingId = null;
+            document.getElementById('add-to-list-btn').textContent = 'Listeye Ekle';
+        }
+
+        // Listeye Ekle butonu
+        document.getElementById('add-to-list-btn').addEventListener('click', () => {
+            const options = collectFormData();
+            if (!options) return;
+
+            if (editingId) {
+                // Düzenleme modu
+                ipcRenderer.send('text-overlay-update', { id: editingId, options });
+            } else {
+                // Yeni ekleme
+                ipcRenderer.send('text-overlay-add-to-list', options);
+            }
+
+            clearForm();
+            document.getElementById('text-content').focus();
+        });
+
+        // Videoya Ekle butonu (doğrudan uygula)
+        document.getElementById('apply-btn').addEventListener('click', () => {
+            const options = collectFormData();
+            if (!options) return;
+            ipcRenderer.send('text-overlay-apply', options);
+            window.close();
+        });
+
+        // Kapat butonu
+        document.getElementById('close-btn').addEventListener('click', () => {
+            ipcRenderer.send('text-overlay-close');
+            window.close();
+        });
+
+        // ESC to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                ipcRenderer.send('text-overlay-close');
+                window.close();
+            }
+        });
+
+        // Initial data from main process
+        ipcRenderer.on('init-data', (event, data) => {
+            console.log('Init data alındı:', data);
+            if (data.startTime !== undefined) {
+                window.startTime = data.startTime;
+            }
+            if (data.videoPath) {
+                window.videoPath = data.videoPath;
+            }
+            // Düzenleme modu
+            if (data.editItem) {
+                editingId = data.editItem.id;
+                const opt = data.editItem.options;
+                document.getElementById('text-content').value = opt.text || '';
+                document.getElementById('font').value = opt.font || 'arial';
+                document.getElementById('size').value = opt.fontSize || '48';
+                document.getElementById('color').value = opt.fontColor || 'white';
+                document.getElementById('bg').value = opt.background || 'none';
+                document.getElementById('shadow').value = opt.shadow || 'none';
+
+                // Eski 'top', 'bottom' değerlerini dönüştür
+                let pos = opt.position || 'bottom-center';
+                if (pos === 'top') pos = 'top-center';
+                if (pos === 'bottom') pos = 'bottom-center';
+                document.getElementById('position').value = pos;
+
+                document.getElementById('transition').value = opt.transition || 'none';
+                document.getElementById('whole-video').checked = opt.duration === 'whole';
+                document.getElementById('duration').value = opt.duration === 'whole' ? '5' : opt.duration;
+                document.getElementById('duration').disabled = opt.duration === 'whole';
+                document.getElementById('tts-enable').checked = opt.ttsEnabled || false;
+                document.getElementById('tts-options').style.display = opt.ttsEnabled ? 'block' : 'none';
+                document.getElementById('add-to-list-btn').textContent = 'Güncelle';
+            }
+        });
+
+        // === YAPAY ZEKA GERİ BİLDİRİMİ ===
+        let conversationHistory = [];
+
+        // API anahtarını kontrol et
+        async function checkApiKey() {
+            const savedKey = await ipcRenderer.invoke('get-gemini-api-key');
+            if (savedKey) {
+                return savedKey;
+            }
+            // API anahtarı yok, kullanıcıdan iste
+            document.getElementById('api-key-section').style.display = 'block';
+            document.getElementById('gemini-api-key').focus();
+            return null;
+        }
+
+        // AI geri bildirimi al
+        async function getAiFeedback(customPrompt = null) {
+            const formData = collectFormData();
+            if (!formData) {
+                alert('Lütfen önce bir yazı girin');
+                return;
+            }
+
+            // API anahtarını kontrol et
+            let apiKey = await checkApiKey();
+            if (!apiKey) {
+                const keyInput = document.getElementById('gemini-api-key');
+                if (!keyInput.value.trim()) {
+                    alert('Lütfen Gemini API anahtarınızı girin');
+                    keyInput.focus();
+                    return;
+                }
+                apiKey = keyInput.value.trim();
+
+                // Kaydetme seçeneği
+                if (document.getElementById('save-api-key').checked) {
+                    await ipcRenderer.invoke('save-gemini-api-key', apiKey);
+                }
+                document.getElementById('api-key-section').style.display = 'none';
+            }
+
+            // Yükleniyor göster
+            document.getElementById('ai-loading').style.display = 'block';
+            document.getElementById('ai-feedback-btn').disabled = true;
+
+            try {
+                // Video karesini al
+                const frameData = await ipcRenderer.invoke('extract-frame-base64', {
+                    time: window.startTime || 0,
+                    videoPath: window.videoPath
+                });
+
+                // Prompt hazırla
+                const defaultPrompt = `Görme engelli bir kullanıcıyım ve videoma bir yazı ekledim. 
+
+Yazı bilgileri:
+- Metin: "${formData.text}"
+- Yazı tipi: ${formData.font}
+- Boyut: ${formData.fontSize}px
+- Yazı rengi: ${formData.fontColor}
+- Arka plan: ${formData.background}
+- Konum: ${formData.position}
+
+Bana yazıyı eklediğim sahneyi kısaca betimlemeni istiyorum. Sonrasında da eklediğim yazı boyut, konum ve ön, arka plan renkleri bakımından yeterince görünür mü, video ile uyumlu mu bilgi vermeni bekliyorum. Eğer yazının videoyla daha uyumlu olması için önerilerin varsa bunları da duymak istiyorum.`;
+
+                const prompt = customPrompt || defaultPrompt;
+
+                // Takip sorusuysa güncel form bilgilerini de ekle
+                const finalPrompt = customPrompt
+                    ? `Güncel yazı ayarları:
+- Metin: "${formData.text}"
+- Yazı tipi: ${formData.font}
+- Boyut: ${formData.fontSize}px
+- Yazı rengi: ${formData.fontColor}
+- Arka plan: ${formData.background}
+- Konum: ${formData.position}
+
+Kullanıcının ek sorusu: ${customPrompt}`
+                    : prompt;
+
+                // Konuşma geçmişine ekle
+                conversationHistory.push({ role: 'user', content: finalPrompt });
+
+                // Seçilen modeli al
+                const selectedModel = document.getElementById('gemini-model').value;
+
+                // Gemini'ye gönder
+                const result = await ipcRenderer.invoke('gemini-vision-request', {
+                    apiKey,
+                    model: selectedModel,
+                    imageBase64: frameData,
+                    prompt: finalPrompt,
+                    history: conversationHistory.slice(0, -1) // Son eklenenı hariç tut
+                });
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Bilinmeyen hata');
+                }
+
+                const response = result.text;
+
+                // Yanıtı göster
+                document.getElementById('ai-response-section').style.display = 'block';
+                const responseArea = document.getElementById('ai-response');
+                responseArea.value = response;
+
+                // Konuşma geçmişine ekle
+                conversationHistory.push({ role: 'assistant', content: response });
+
+                // Ekran okuyucu için otomatik oku (aria-live assertive)
+                const liveRegion = document.getElementById('ai-live-region');
+                // Önce temizle sonra yeni içerik ekle (değişiklik algılaması için)
+                liveRegion.textContent = '';
+                setTimeout(() => {
+                    liveRegion.textContent = 'Yapay zeka yanıtı: ' + response;
+                }, 100);
+
+                // Yanıt alanına odaklan
+                responseArea.focus();
+
+            } catch (error) {
+                alert('Yapay zeka hatası: ' + error.message);
+            } finally {
+                document.getElementById('ai-loading').style.display = 'none';
+                document.getElementById('ai-feedback-btn').disabled = false;
+            }
+        }
+
+        // AI stil önerisi al
+        async function getAiStyleSuggestion() {
+            const formData = collectFormData();
+            if (!formData || !formData.text) {
+                alert('Lütfen önce bir yazı girin');
+                document.getElementById('text-content').focus();
+                return;
+            }
+
+            // API anahtarını kontrol et
+            let apiKey = await checkApiKey();
+            if (!apiKey) {
+                // ... (anahtar isteme mantığı, checkApiKey içinde zaten UI açılıyor ama burada da tetiklenebilir)
+                const keyInput = document.getElementById('gemini-api-key');
+                if (!keyInput.value.trim()) {
+                    alert('Lütfen Gemini API anahtarınızı girin');
+                    keyInput.focus();
+                    return;
+                }
+                apiKey = keyInput.value.trim();
+                if (document.getElementById('save-api-key').checked) {
+                    await ipcRenderer.invoke('save-gemini-api-key', apiKey);
+                }
+                document.getElementById('api-key-section').style.display = 'none';
+            }
+
+            // Yükleniyor
+            document.getElementById('ai-loading').style.display = 'block';
+            document.getElementById('ai-suggest-btn').disabled = true;
+            document.getElementById('ai-feedback-btn').disabled = true;
+
+            try {
+                // Video karesini al
+                const frameData = await ipcRenderer.invoke('extract-frame-base64', {
+                    time: window.startTime || 0,
+                    videoPath: window.videoPath
+                });
+
+                // Prompt
+                const prompt = `Video karesini ve şu metni analiz et: "${formData.text}".
+                    Metnin videoda en okunaklı, estetik ve profesyonel görünmesi için en uygun konumu, boyutu, rengi ve fontu belirle.
+                    Yazının arka planda yeterince görünür ve okunabilir olup olmayacağını özellikle değerlendir.
+
+                    Yanıtı SADECE aşağıdaki JSON formatında ver:
+                    {
+                      "position": "top-left, top-center, top-right, middle-left, center, middle-right, bottom-left, bottom-center, bottom-right bunlardan biri",
+                      "fontSize": sayı (örneğin 24, 32, 48, 64, 72, 96),
+                      "fontColor": "white, black, yellow, red, green, blue bunlardan biri",
+                      "backgroundColor": "none, black, black@0.5, white, white@0.5 bunlardan biri",
+                      "shadow": "none, small, medium, large bunlardan biri",
+                      "fontFamily": "arial, times, courier, verdana, tahoma bunlardan biri",
+                      "reason": "Neden bu stili ve konumu seçtiğini açıklayan kısa bir cümle."
+                    }`;
+
+                const selectedModel = document.getElementById('gemini-model').value;
+
+                const result = await ipcRenderer.invoke('gemini-vision-request', {
+                    apiKey,
+                    model: selectedModel,
+                    imageBase64: frameData,
+                    prompt: prompt,
+                    history: []
+                });
+
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                // JSON'ı parse etmeye çalış
+                let suggestion;
+                try {
+                    let cleanedText = result.text.replace(/```json/g, '').replace(/```/g, '').trim();
+                    suggestion = JSON.parse(cleanedText);
+                } catch (e) {
+                    console.error('JSON parse hatası:', e);
+                    throw new Error('Yapay zeka geçerli bir format üretmedi. Lütfen tekrar deneyin.');
+                }
+
+                // Önerileri uygula
+                if (suggestion) {
+                    if (suggestion.position) document.getElementById('position').value = suggestion.position;
+                    if (suggestion.fontSize) document.getElementById('size').value = String(suggestion.fontSize);
+                    if (suggestion.fontColor) document.getElementById('color').value = suggestion.fontColor;
+                    if (suggestion.backgroundColor) document.getElementById('bg').value = suggestion.backgroundColor;
+                    if (suggestion.fontFamily) document.getElementById('font').value = suggestion.fontFamily;
+
+                    const message = `Öneri uygulandı:\nKonum: ${suggestion.position}\nBoyut: ${suggestion.fontSize}px\nRenk: ${suggestion.fontColor}\n\nNeden: ${suggestion.reason || 'Görsel analize dayalı en uygun ayarlar seçildi.'}`;
+
+                    document.getElementById('ai-response-section').style.display = 'block';
+                    document.getElementById('ai-response').value = message;
+
+                    // Analiz edilen kareyi göster
+                    const previewContainer = document.getElementById('ai-preview-container');
+                    if (previewContainer) {
+                        previewContainer.innerHTML = `<img src="data:image/jpeg;base64,${frameData}" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid #444; margin-top: 10px;">`;
+                        previewContainer.style.display = 'block';
+                    }
+
+                    // Canlı duyuru
+                    const liveRegion = document.getElementById('ai-live-region');
+                    liveRegion.textContent = '';
+                    setTimeout(() => { liveRegion.textContent = message; }, 100);
+                }
+
+            } catch (error) {
+                alert('Öneri alınamadı: ' + error.message);
+            } finally {
+                document.getElementById('ai-loading').style.display = 'none';
+                document.getElementById('ai-suggest-btn').disabled = false;
+                document.getElementById('ai-feedback-btn').disabled = false;
+            }
+        }
+
+        // AI geri bildirimi butonu
+        document.getElementById('ai-feedback-btn').addEventListener('click', () => {
+            conversationHistory = []; // Yeni konuşma başlat
+            getAiFeedback();
+        });
+
+        // AI öneri butonu
+        document.getElementById('ai-suggest-btn').addEventListener('click', () => {
+            getAiStyleSuggestion();
+        });
+
+        // API anahtarını değiştir butonu
+        document.getElementById('change-api-key-btn').addEventListener('click', () => {
+            document.getElementById('api-key-section').style.display = 'block';
+            document.getElementById('gemini-api-key').value = '';
+            document.getElementById('gemini-api-key').focus();
+        });
+
+        // Takip sorusu sor
+        document.getElementById('ask-followup-btn').addEventListener('click', () => {
+            const question = document.getElementById('followup-question').value.trim();
+            if (question) {
+                getAiFeedback(question);
+                document.getElementById('followup-question').value = '';
+            }
+        });
+
+        // Enter ile takip sorusu gönder
+        document.getElementById('followup-question').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('ask-followup-btn').click();
+            }
+        });
+
+        // Sayfa yüklendiğinde
+        loadTtsVoices();
+
+        // Main process'e hazır olduğumuzu bildir
+        setTimeout(() => ipcRenderer.send('text-overlay-ready'), 100);
+    </script>
+</body>
+
+</html>

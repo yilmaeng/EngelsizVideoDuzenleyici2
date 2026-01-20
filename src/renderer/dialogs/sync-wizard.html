@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ses Senkronizasyon Sihirbazı</title>
+    <!-- Reuse existing styles where possible -->
+    <link rel="stylesheet" href="../styles/main.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #fff;
+            margin-top: 0;
+        }
+
+        h2 {
+            border-bottom: 2px solid #0078d4;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* Wizard container */
+        #wizard-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .step-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: none;
+            /* Hidden by default */
+        }
+
+        .step-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Accessibilty announcer */
+        #live-region {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* Buttons footer */
+        .wizard-footer {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .left-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .right-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        button.primary {
+            background: #0078d4;
+            color: white;
+        }
+
+        button.secondary {
+            background: #444;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button:focus {
+            outline: 2px solid #0078d4;
+            outline-offset: 2px;
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #b0b0b0;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px;
+            background: #252525;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 4px;
+        }
+
+        .file-select-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .file-path-display {
+            flex: 1;
+            padding: 10px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #aaa;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Sync Engine Specific Styles */
+        .sync-visualizer {
+            background: #000;
+            border: 2px solid #0078d4;
+            border-radius: 8px;
+            min-height: 300px;
+            height: 40vh;
+            flex-shrink: 0;
+            margin-bottom: 20px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .sync-visualizer video {
+            width: 100%;
+            height: 100%;
+            min-height: 200px;
+            object-fit: contain;
+            background: #000;
+            display: block;
+            z-index: 1;
+        }
+
+        .sync-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .control-panel {
+            background: #252525;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #0078d4;
+        }
+
+        /* Recording styles */
+        .record-monitor {
+            background: #000;
+            aspect-ratio: 16/9;
+            max-height: 40vh;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .countdown-overlay {
+            position: absolute;
+            font-size: 5em;
+            color: white;
+            text-shadow: 0 0 10px black;
+            font-weight: bold;
+            display: none;
+        }
+
+        .recording-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: red;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Media Players Hidden but Functional */
+        .hidden-player {
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            position: absolute;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="live-region" aria-live="polite" aria-atomic="true"></div>
+
+    <h2 id="wizard-title">Ses Senkronizasyon Sihirbazı</h2>
+
+    <div id="wizard-container">
+        <!-- Step A1: File Selection -->
+        <div id="step-A1" class="step-content">
+            <h3>Dosya Seçimi</h3>
+            <p>Video görüntüsü ve referans sesin bulunduğu videoyu ve yerine koymak istediğiniz temiz ses dosyasını
+                seçin.</p>
+
+            <div class="form-group">
+                <label>Video Dosyası (Referans Sesli):</label>
+                <div class="file-select-row">
+                    <div id="display-video-path" class="file-path-display">Dosya seçilmedi...</div>
+                    <button type="button" class="secondary" id="btn-select-video"
+                        aria-label="Video Dosyası Seç">Seç...</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Harici Temiz Ses (WAV/MP3):</label>
+                <div class="file-select-row">
+                    <div id="display-audio-path" class="file-path-display">Dosya seçilmedi...</div>
+                    <button type="button" class="secondary" id="btn-select-audio"
+                        aria-label="Ses Dosyası Seç">Seç...</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step A2: Auto Sync Check -->
+        <div id="step-A2" class="step-content">
+            <h3>Otomatik Senkron Analizi</h3>
+            <p id="analysis-status">Analiz ediliyor, lütfen bekleyin...</p>
+
+            <div id="analysis-result" style="display:none;">
+                <p><strong>Önerilen Offset:</strong> <span id="suggested-offset" class="stat-value">0 ms</span></p>
+                <p><strong>Güven Seviyesi:</strong> <span id="confidence-level">-</span></p>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Nasıl devam etmek istersiniz?</label>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label><input type="radio" name="sync-choice" value="apply" checked> Öneriyi uygula ve kontrole
+                            geç</label>
+                        <label><input type="radio" name="sync-choice" value="zero"> 0 ms ile başla (manuel
+                            ayarla)</label>
+                        <label><input type="radio" name="sync-choice" value="manual"> Otomatik öneriyi yoksay</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step B1: Reference Audio Selection -->
+        <div id="step-B1" class="step-content">
+            <h3>Referans Ses Seçimi</h3>
+            <p>Video çekerken dinleyeceğiniz referans müziği/sesi seçin. Bu ses kayda <strong>gömülmeyecektir</strong>,
+                sadece kulaklığınızdan size çalacaktır.</p>
+
+            <div class="form-group">
+                <label>Referans Ses Dosyası:</label>
+                <div class="file-select-row">
+                    <div id="display-ref-audio-path" class="file-path-display">Dosya seçilmedi...</div>
+                    <button type="button" class="secondary" id="btn-select-ref-audio"
+                        aria-label="Referans Ses Dosyası Seç">Seç...</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="output-device-select">Çıkış Aygıtı (Kulaklık Önerilir):</label>
+                <select id="output-device-select">
+                    <option value="default">Varsayılan Sistem Çıkışı</option>
+                </select>
+                <p class="hint" style="color: yellow;">⚠ Lütfen referans sesin mikrofona sızmaması için kulaklık
+                    kullanın.</p>
+            </div>
+        </div>
+
+        <!-- Step B2: Camera/Mic Setup -->
+        <div id="step-B2" class="step-content">
+            <h3>Kuveyt ve Mikrofon Ayarı</h3>
+
+            <div class="form-group">
+                <label for="camera-select">Kamera:</label>
+                <select id="camera-select"></select>
+            </div>
+
+            <div class="form-group">
+                <label for="mic-select">Mikrofon:</label>
+                <select id="mic-select"></select>
+            </div>
+
+            <div class="form-group">
+                <label><input type="checkbox" id="record-mic-check" checked> Mikrofon kaydı da al (Temiz ses
+                    için)</label>
+                <p class="hint">İşaretlenmezse sadece görüntü kaydedilir. İşaretlenirse senkron aşamasında mikrofon
+                    kaydını 'Ana Ses' olarak seçebilirsiniz.</p>
+            </div>
+
+            <button type="button" class="secondary" id="btn-test-devices">5 Saniyelik Test Kaydı Yap</button>
+            <p id="test-result-msg"></p>
+        </div>
+
+        <!-- Step B3: Recording Phase -->
+        <div id="step-B3" class="step-content">
+            <h3>Kayıt Stüdyosu</h3>
+
+            <div class="record-monitor">
+                <video id="camera-preview" autoplay muted
+                    style="width: 100%; height: 100%; object-fit: contain;"></video>
+                <div id="countdown-display" class="countdown-overlay">3...</div>
+                <div id="recording-indicator" class="recording-indicator"></div>
+            </div>
+
+            <div class="sync-controls">
+                <div class="control-panel">
+                    <label>Count-in (Geri Sayım):</label>
+                    <select id="count-in-select">
+                        <option value="0">0 sn (Anında)</option>
+                        <option value="3" selected>3 sn</option>
+                        <option value="5">5 sn</option>
+                        <option value="8">8 sn</option>
+                    </select>
+                </div>
+                <!-- Metronom option could go here -->
+            </div>
+
+            <div style="background: #333; padding: 15px; border-radius: 4px; text-align: center;">
+                <p><strong>Kayıt Kontrolleri:</strong></p>
+                <div style="margin-bottom: 10px;">
+                    <button id="btn-toggle-record" class="primary"
+                        style="background: red; font-size: 1.2em; width: 200px;">⚫ KAYIT (R)</button>
+                </div>
+                <p><strong>P:</strong> Duraklat / Devam Et</p>
+                <p><strong>G / L:</strong> Referans Sesi Geri/İleri Al</p>
+                <p><strong>Esc:</strong> İptal</p>
+                <p id="record-status-text" aria-live="polite" style="font-size: 1.2em; color: yellow;">Hazır</p>
+            </div>
+        </div>
+
+        <!-- Step B4: Post-Record Source Selection -->
+        <div id="step-B4" class="step-content">
+            <h3>Senkron için Ses Kaynağı</h3>
+            <p>Eşleşme (Sync) motorunda hangi sesi 'Ana Temiz Ses' olarak kullanmak istersiniz?</p>
+
+            <div class="form-group">
+                <label class="radio-option">
+                    <input type="radio" name="main-audio-source" value="mic" id="source-mic">
+                    <strong>Kaydedilen Mikrofon Sesi</strong>
+                    <span>(Kendi performansınızı kaydettiyseniz bunu seçin)</span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="radio-option">
+                    <input type="radio" name="main-audio-source" value="external" id="source-external">
+                    <strong>Harici Bir Dosya Seç...</strong>
+                    <span>(Stüdyo kaydı gibi başka bir dosya varsa)</span>
+                </label>
+                <div id="post-record-external-file" style="margin-left: 25px; margin-top: 5px; display: none;">
+                    <button type="button" class="secondary" id="btn-select-main-wav"
+                        aria-label="Ana Ses Dosyasını Seç">WAV/MP3 Seç</button>
+                    <span id="display-main-wav-path">Seçilmedi</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="radio-option">
+                    <input type="radio" name="main-audio-source" value="later" id="source-later">
+                    <strong>Sadece Videoyu Kaydet</strong>
+                    <span>(Daha sonra 'Replace Audio' modu ile birleştireceğim)</span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="radio-option">
+                    <input type="radio" name="main-audio-source" value="reference" id="source-ref">
+                    <strong>Referans Sesi Kullan (B1'deki)</strong>
+                    <span>(Video üzerine B1 adımında seçtiğiniz referans ses döşenir)</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Step Shared: Sync Engine (Manual Sync) -->
+        <div id="step-SyncEngine" class="step-content">
+            <h3>Senkronizasyon (İnce Ayar)</h3>
+
+            <div class="sync-visualizer" id="waveform-container">
+                <video id="ref-video-player" preload="auto"
+                    style="display: block; width: 100%; height: 100%; min-width: 320px; min-height: 240px; background-color: #111; visibility: visible; opacity: 1;"></video>
+            </div>
+
+            <div class="sync-controls">
+                <div class="control-panel">
+                    <label>Dinleme Modu (1/2/3):</label>
+                    <select id="listen-mode">
+                        <option value="mix">Karışık (Both)</option>
+                        <option value="ref">Sadece Video (Ref)</option>
+                        <option value="clean">Sadece Temiz (Main)</option>
+                    </select>
+                    <div style="margin-top: 10px;">
+                        <label for="channel-mode" style="font-size: 0.9em; display: block; margin-bottom: 5px;">Kanal
+                            Düzeni:</label>
+                        <select id="channel-mode">
+                            <option value="center">Merkezi (Normal)</option>
+                            <option value="split">Ayrık - Basit (Sol: Temiz)</option>
+                            <option value="split-extract">Ayrık - Tam (Sol: Temiz / Sağ: Video) *</option>
+                        </select>
+                        <p id="extract-warning"
+                            style="display: none; font-size: 0.8em; color: yellow; margin-top: 5px;">
+                            * Bu mod, video sesini ayrı dosya olarak çıkarır. İlk kullanımda birkaç saniye
+                            bekleyebilirsiniz.
+                        </p>
+                    </div>
+                </div>
+                <div class="control-panel">
+                    <label>Offset (Gecikme Ayarı):</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="btn-offset-dec" aria-label="Milisaniyeyi azalt / Gecikmeyi geri çek">-</button>
+                        <input type="text" id="offset-display" value="0 ms" readonly
+                            style="width: 80px; text-align: center;">
+                        <button id="btn-offset-inc" aria-label="Milisaniyeyi arttır / Gecikmeyi ileri çek">+</button>
+                    </div>
+                </div>
+                <div class="control-panel">
+                    <p style="font-size: 0.9em; margin-bottom: 5px;" aria-hidden="true">
+                        <strong>Kısayollar:</strong><br>
+                        10ms: Alt + Sağ/Sol<br>
+                        100ms: Alt + Shift + Sağ/Sol<br>
+                        1ms: Win + Ctrl + Sağ/Sol
+                    </p>
+                    <label>Kontroller:</label>
+                    <button type="button" id="btn-sync-play" class="primary"
+                        aria-description="Boşluk tuşu ile oynat/duraklat. İnce ayar için Alt+Ok tuşlarını kullanın.">Oynat
+                        (Space)</button>
+                </div>
+                <div class="control-panel">
+                    <label>Loop (Döngü):</label>
+                    <button type="button" id="btn-toggle-loop">Loop: Kapalı (O)</button>
+                </div>
+            </div>
+
+            <div class="shortcuts-legend"
+                style="border: 1px solid #444; padding: 10px; font-size: 0.9em; background: #222;">
+                <strong>Klavye Kısayolları:</strong><br>
+                <strong>Oynatma:</strong> Space/K: Oynat/Duraklat &bull; J: 5sn Geri &bull; L: 5sn İleri &bull; S:
+                Durdur+Başa &bull; O: Loop<br>
+                <strong>Offset:</strong> Alt+Sağ/Sol: ±10ms &bull; Alt+Shift+Sağ/Sol: ±100ms &bull; Ctrl+Alt+Sağ/Sol:
+                ±1ms<br>
+                1/2/3: Ses Modu (Karışık/Video/Temiz)
+            </div>
+        </div>
+
+        <!-- Step Render -->
+        <div id="step-Render" class="step-content">
+            <h3>Final Render</h3>
+            <p>Senkronizasyon tamamlandı. Çıktı oluşturulmaya hazır.</p>
+
+            <div class="form-group checkbox-group">
+                <label><input type="checkbox" id="mute-original" checked disabled> Orijinal Video Sesini Kapat
+                    (Mute)</label>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label><input type="checkbox" id="embed-clean" checked disabled> Temiz Sesi Göm</label>
+            </div>
+
+            <div id="render-progress-area" style="display: none;">
+                <label>İşleniyor...</label>
+                <progress id="render-progress" value="0" max="100" style="width: 100%"></progress>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer buttons -->
+    <div class="wizard-footer">
+        <div class="left-buttons">
+            <button type="button" class="secondary" id="btn-cancel">İptal</button>
+        </div>
+        <div class="right-buttons">
+            <button type="button" class="secondary" id="btn-back" disabled>Geri</button>
+            <button type="button" class="primary" id="btn-next">İleri</button>
+            <button type="button" class="primary" id="btn-finish" style="display: none;">Oluştur (Render)</button>
+        </div>
+    </div>
+
+    <!-- Hidden audio elements for processing/playback -->
+    <audio id="clean-audio-player" class="hidden-player"></audio>
+    <audio id="video-audio-player" class="hidden-player"></audio> <!-- Extracted video audio for split-extract mode -->
+    <audio id="ref-playback-audio" class="hidden-player"></audio> <!-- For Mode B playback -->
+
+    <script src="../scripts/sync-wizard.js"></script>
+</body>
+
+</html>

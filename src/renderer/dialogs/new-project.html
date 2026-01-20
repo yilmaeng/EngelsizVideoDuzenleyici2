@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yeni Proje Oluştur</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #fff;
+            border-bottom: 2px solid #0078d4;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #b0b0b0;
+            font-weight: 500;
+        }
+
+        .radio-group {
+            background: #252525;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #444;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .radio-option:hover {
+            background: #2d2d2d;
+        }
+
+        .radio-option:last-child {
+            margin-bottom: 0;
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 12px;
+            margin-top: 3px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"]:focus {
+            outline: 2px solid #0078d4;
+            outline-offset: 2px;
+        }
+
+        .radio-label {
+            flex: 1;
+        }
+
+        .radio-label strong {
+            display: block;
+            color: #fff;
+            margin-bottom: 4px;
+            font-size: 15px;
+        }
+
+        .radio-label span {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            background: #1a2a3a;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #3a5a7a;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 12px;
+            margin-top: 3px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-group input[type="checkbox"]:focus {
+            outline: 2px solid #0078d4;
+            outline-offset: 2px;
+        }
+
+        .checkbox-label {
+            flex: 1;
+        }
+
+        .checkbox-label strong {
+            display: block;
+            color: #7ab3ff;
+            margin-bottom: 4px;
+        }
+
+        .checkbox-label span {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            color: #7ab3ff;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 8px;
+            padding: 10px;
+            background: #252525;
+            border-radius: 4px;
+            border-left: 3px solid #0078d4;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #444;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        button:focus {
+            outline: 2px solid #0078d4;
+            outline-offset: 2px;
+        }
+
+        button.primary {
+            background: #0078d4;
+            color: white;
+        }
+
+        button.secondary {
+            background: #444;
+            color: #fff;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Görünmez ama ekran okuyucu için okunabilir alan */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Canlı duyuru bölgesi */
+        #live-region {
+            position: absolute;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="live-region" aria-live="assertive" aria-atomic="true"></div>
+
+    <h2>Yeni Proje Oluştur</h2>
+
+    <form id="new-project-form">
+        <!-- Proje Türü (şimdilik sadece slideshow) -->
+        <div class="form-group">
+            <div class="section-title">Proje Türü</div>
+            <div class="radio-group" role="radiogroup" aria-labelledby="project-type-label">
+                <span id="project-type-label" class="sr-only">Proje türü seçimi</span>
+                <label class="radio-option">
+                    <input type="radio" name="project-type" value="slideshow" checked aria-describedby="slideshow-desc">
+                    <div class="radio-label">
+                        <strong>Slideshow Projesi (Resim + Ses)</strong>
+                        <span id="slideshow-desc">Resim ve ses/müzik dosyalarını birleştirerek video oluşturun</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Video Çıktı Oranı -->
+        <div class="form-group">
+            <div class="section-title">Video Çıktı Oranı</div>
+            <div class="radio-group" role="radiogroup" aria-labelledby="aspect-ratio-label">
+                <span id="aspect-ratio-label" class="sr-only">Video en-boy oranı seçimi</span>
+
+                <label class="radio-option">
+                    <input type="radio" name="aspect-ratio" value="16:9" aria-describedby="ratio-16-9-desc">
+                    <div class="radio-label">
+                        <strong>16:9 – Yatay</strong>
+                        <span id="ratio-16-9-desc">YouTube ve geleneksel videolar için önerilir</span>
+                    </div>
+                </label>
+
+                <label class="radio-option">
+                    <input type="radio" name="aspect-ratio" value="9:16" aria-describedby="ratio-9-16-desc">
+                    <div class="radio-label">
+                        <strong>9:16 – Dikey</strong>
+                        <span id="ratio-9-16-desc">TikTok, Instagram Reels ve YouTube Shorts için önerilir</span>
+                    </div>
+                </label>
+            </div>
+            <div class="hint" role="note">
+                <strong>Not:</strong> Lütfen bir oran seçin. Bu seçim, eklediğiniz resimlerin nasıl konumlandırılacağını
+                belirler.
+            </div>
+        </div>
+
+        <!-- Görsel Yerleşim Varsayılanı -->
+        <div class="form-group">
+            <div class="section-title">Görsel Yerleşim Ayarı</div>
+            <label class="checkbox-group">
+                <input type="checkbox" id="fill-frame" checked aria-describedby="fill-frame-desc">
+                <div class="checkbox-label">
+                    <strong>Tüm görselleri otomatik olarak çerçeveyi dolduracak şekilde yerleştir</strong>
+                    <span id="fill-frame-desc">Önerilen ayar. Gerekirse kırpma yapılır, siyah boşluklar oluşmaz.</span>
+                </div>
+            </label>
+        </div>
+
+        <div class="buttons">
+            <button type="button" class="secondary" id="cancel-btn">İptal</button>
+            <button type="submit" class="primary" id="create-btn" disabled>Proje Oluştur</button>
+        </div>
+    </form>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        // Form elemanları
+        const form = document.getElementById('new-project-form');
+        const aspectRatioInputs = document.querySelectorAll('input[name="aspect-ratio"]');
+        const fillFrameCheckbox = document.getElementById('fill-frame');
+        const createBtn = document.getElementById('create-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const liveRegion = document.getElementById('live-region');
+
+        // Ekran okuyucu için duyuru
+        function announce(message) {
+            liveRegion.textContent = '';
+            setTimeout(() => {
+                liveRegion.textContent = message;
+            }, 100);
+        }
+
+        // Oran seçildiğinde oluştur butonunu aktif et
+        aspectRatioInputs.forEach(input => {
+            input.addEventListener('change', () => {
+                createBtn.disabled = false;
+                const label = input.value === '16:9' ? 'Yatay 16:9' : 'Dikey 9:16';
+                announce(`${label} seçildi. Proje oluşturmak için Proje Oluştur düğmesine basın.`);
+            });
+        });
+
+        // Form gönderimi
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            console.log('Form submit edildi');
+
+            const selectedRatio = document.querySelector('input[name="aspect-ratio"]:checked');
+            if (!selectedRatio) {
+                announce('Lütfen bir video çıktı oranı seçin.');
+                aspectRatioInputs[0].focus();
+                return;
+            }
+
+            const projectSettings = {
+                type: 'slideshow',
+                aspectRatio: selectedRatio.value,
+                fillFrame: fillFrameCheckbox.checked
+            };
+
+            console.log('Proje ayarları gönderiliyor:', projectSettings);
+            ipcRenderer.send('slideshow-project-create', projectSettings);
+            console.log('IPC gönderildi');
+        });
+
+        // İptal butonu
+        cancelBtn.addEventListener('click', () => {
+            ipcRenderer.send('slideshow-project-cancel');
+            window.close();
+        });
+
+        // ESC ile kapat
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                ipcRenderer.send('slideshow-project-cancel');
+                window.close();
+            }
+        });
+
+        // Sayfa yüklendiğinde duyuru
+        window.addEventListener('load', () => {
+            announce('Yeni Proje Oluştur penceresi açıldı. Lütfen bir video çıktı oranı seçin: 16:9 Yatay veya 9:16 Dikey.');
+            // İlk radio'ya odaklan
+            aspectRatioInputs[0].focus();
+        });
+    </script>
+</body>
+
+</html>

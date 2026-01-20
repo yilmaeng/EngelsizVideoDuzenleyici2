@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slideshow Düzenleyici</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: #252525;
+            padding: 15px 20px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .project-info {
+            color: #888;
+            font-size: 14px;
+        }
+
+        /* Ana içerik */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sol panel - Listeler */
+        .left-panel {
+            width: 400px;
+            background: #1e1e1e;
+            border-right: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Sağ panel - Önizleme */
+        .right-panel {
+            flex: 1;
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Tab sistemi */
+        .tabs {
+            display: flex;
+            background: #252525;
+            border-bottom: 1px solid #444;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background: #2d2d2d;
+        }
+
+        .tab-btn.active {
+            background: #1e1e1e;
+            color: #7ab3ff;
+            border-bottom: 2px solid #0078d4;
+        }
+
+        .tab-btn:focus {
+            outline: 2px solid #0078d4;
+            outline-offset: -2px;
+        }
+
+        /* Tab içerikleri */
+        .tab-content {
+            flex: 1;
+            overflow: hidden;
+            display: none;
+            flex-direction: column;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* Liste başlığı ve butonlar */
+        .list-header {
+            padding: 10px 15px;
+            background: #252525;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .list-header h3 {
+            margin: 0;
+            font-size: 14px;
+            color: #b0b0b0;
+        }
+
+        .add-btn {
+            padding: 6px 12px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .add-btn:hover {
+            background: #006cbd;
+        }
+
+        .add-btn:focus {
+            outline: 2px solid #fff;
+            outline-offset: 2px;
+        }
+
+        /* Liste kutusu */
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .item-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .item-list[role="listbox"]:focus {
+            outline: 2px solid #0078d4;
+            outline-offset: -2px;
+        }
+
+        .list-item {
+            padding: 12px;
+            background: #252525;
+            border: 1px solid #444;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .list-item:hover {
+            background: #2d2d2d;
+        }
+
+        .list-item.selected {
+            background: #1a3a5c;
+            border-color: #0078d4;
+        }
+
+        .list-item:focus {
+            outline: 2px solid #0078d4;
+            outline-offset: -2px;
+        }
+
+        .list-item .item-title {
+            font-weight: 500;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .list-item .item-info {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .list-item .item-duration {
+            float: right;
+            color: #7ab3ff;
+            font-weight: 500;
+        }
+
+        /* Boş liste mesajı */
+        .empty-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-message p {
+            margin: 10px 0;
+        }
+
+        /* Önizleme alanı */
+        .preview-container {
+            max-width: 90%;
+            max-height: 80%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 400px;
+            background: #333;
+            border: 1px solid #444;
+        }
+
+        .preview-placeholder {
+            width: 480px;
+            height: 270px;
+            background: #252525;
+            border: 2px dashed #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .preview-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .preview-btn {
+            padding: 10px 20px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .preview-btn:hover {
+            background: #006cbd;
+        }
+
+        .preview-btn:focus {
+            outline: 2px solid #fff;
+            outline-offset: 2px;
+        }
+
+        /* Alt bilgi çubuğu */
+        .footer {
+            background: #252525;
+            padding: 12px 20px;
+            border-top: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .project-stats {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .project-stats span {
+            margin-right: 20px;
+        }
+
+        .footer-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .footer-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .footer-btn.primary {
+            background: #107c10;
+            color: white;
+        }
+
+        .footer-btn.secondary {
+            background: #444;
+            color: white;
+        }
+
+        .footer-btn:hover {
+            opacity: 0.9;
+        }
+
+        .footer-btn:focus {
+            outline: 2px solid #fff;
+            outline-offset: 2px;
+        }
+
+        /* Bağlam menüsü */
+        .context-menu {
+            position: fixed;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            min-width: 200px;
+            display: none;
+        }
+
+        .context-menu.visible {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .context-menu-item:hover,
+        .context-menu-item:focus {
+            background: #3d3d3d;
+            outline: none;
+        }
+
+        .context-menu-item.disabled {
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: #444;
+            margin: 5px 0;
+        }
+
+        .context-menu-shortcut {
+            color: #888;
+            font-size: 12px;
+            margin-left: 20px;
+        }
+
+        /* Canlı duyuru bölgesi */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        #live-region {
+            position: absolute;
+            left: -9999px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Ekran okuyucu duyuru alanı -->
+    <div id="live-region" aria-live="assertive" aria-atomic="true"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <h1>Slideshow Düzenleyici</h1>
+        <div class="project-info">
+            <span id="aspect-ratio-display">16:9 Yatay</span> •
+            <span id="total-duration-display">Toplam: 0:00</span>
+        </div>
+    </header>
+
+    <!-- Ana içerik -->
+    <main class="main-content">
+        <!-- Sol panel - Listeler -->
+        <div class="left-panel">
+            <!-- Tab butonları -->
+            <div class="tabs" role="tablist">
+                <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="images-panel"
+                    id="images-tab" tabindex="0">
+                    Resimler
+                </button>
+                <button class="tab-btn" role="tab" aria-selected="false" aria-controls="audio-panel" id="audio-tab"
+                    tabindex="-1">
+                    Sesler
+                </button>
+                <button class="tab-btn" role="tab" aria-selected="false" aria-controls="text-panel" id="text-tab"
+                    tabindex="-1">
+                    Yazılar
+                </button>
+            </div>
+
+            <!-- Resimler Paneli -->
+            <div class="tab-content active" id="images-panel" role="tabpanel" aria-labelledby="images-tab">
+                <div class="list-header">
+                    <h3>Resim Listesi (<span id="image-count">0</span>)</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="add-btn" id="describe-all-btn" style="background: #6b4c9a;" disabled>Tümünü
+                            Betimle</button>
+                        <button class="add-btn" id="add-image-btn">+ Resim Ekle</button>
+                    </div>
+                </div>
+
+                <!-- Geçiş Efekti Seçimi -->
+                <div style="padding: 10px 15px; background: #252525; border-bottom: 1px solid #444;">
+                    <label for="transition-select" style="color: #b0b0b0; font-size: 13px; margin-right: 10px;">Geçiş
+                        Efekti:</label>
+                    <select id="transition-select"
+                        style="padding: 6px 12px; background: #1e1e1e; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 13px;">
+                        <option value="none" selected>Yok (Anında geçiş)</option>
+                        <option value="fade">Solma (Fade)</option>
+                        <option value="dissolve">Çözünme (Dissolve)</option>
+                        <option value="wipeleft">Sola Kayma</option>
+                        <option value="wiperight">Sağa Kayma</option>
+                        <option value="slideup">Yukarı Kayma</option>
+                        <option value="slidedown">Aşağı Kayma</option>
+                    </select>
+                </div>
+
+                <div class="list-container">
+                    <ul class="item-list" id="image-list" role="listbox"
+                        aria-label="Resim listesi. Bağlam menüsü için Uygulama tuşuna basın." tabindex="0">
+                        <!-- Resimler buraya dinamik olarak eklenir -->
+                    </ul>
+                    <div class="empty-message" id="images-empty">
+                        <p>Henüz resim eklenmedi.</p>
+                        <p>Resim eklemek için "Resim Ekle" düğmesine basın.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sesler Paneli -->
+            <div class="tab-content" id="audio-panel" role="tabpanel" aria-labelledby="audio-tab">
+                <div class="list-header">
+                    <h3>Ses Listesi (<span id="audio-count">0</span>)</h3>
+                    <button class="add-btn" id="add-audio-btn">+ Ses Ekle</button>
+                </div>
+                <div class="list-container">
+                    <ul class="item-list" id="audio-list" role="listbox"
+                        aria-label="Ses listesi. Bağlam menüsü için Uygulama tuşuna basın." tabindex="0">
+                        <!-- Sesler buraya dinamik olarak eklenir -->
+                    </ul>
+                    <div class="empty-message" id="audio-empty">
+                        <p>Henüz ses eklenmedi.</p>
+                        <p>Ses/müzik eklemek için "Ses Ekle" düğmesine basın.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Yazılar Paneli -->
+            <div class="tab-content" id="text-panel" role="tabpanel" aria-labelledby="text-tab">
+                <div class="list-header">
+                    <h3>Yazı Listesi (<span id="text-count">0</span>)</h3>
+                    <button class="add-btn" id="add-text-btn">+ Yazı Ekle</button>
+                </div>
+                <div class="list-container">
+                    <ul class="item-list" id="text-list" role="listbox"
+                        aria-label="Yazı listesi. Bağlam menüsü için Uygulama tuşuna basın." tabindex="0">
+                        <!-- Yazılar buraya dinamik olarak eklenir -->
+                    </ul>
+                    <div class="empty-message" id="text-empty">
+                        <p>Henüz yazı eklenmedi.</p>
+                        <p>Yazı eklemek için "Yazı Ekle" düğmesine basın.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ panel - Önizleme -->
+        <div class="right-panel">
+            <div class="preview-container">
+                <div class="preview-placeholder" id="preview-placeholder">
+                    Bir resim seçin
+                </div>
+                <img class="preview-image" id="preview-image" style="display: none;" alt="Seçili resim önizlemesi">
+                <div class="preview-controls">
+                    <button class="preview-btn" id="preview-btn" disabled aria-keyshortcuts="Alt+P">
+                        Önizle (Alt+P)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="project-stats">
+            <span id="stats-images">0 resim</span>
+            <span id="stats-audio">0 ses</span>
+            <span id="stats-text">0 yazı</span>
+        </div>
+        <div class="footer-buttons">
+            <button class="footer-btn secondary" id="close-btn">Kapat</button>
+            <button class="footer-btn secondary" id="save-project-btn" style="background: #4a7c59;">Projeyi
+                Kaydet</button>
+            <button class="footer-btn primary" id="export-btn" disabled>Video Oluştur</button>
+        </div>
+    </footer>
+
+    <!-- Resim Bağlam Menüsü -->
+    <div class="context-menu" id="image-context-menu" role="menu" aria-label="Resim işlemleri">
+        <div class="context-menu-item" role="menuitem" tabindex="0" data-action="move-up">
+            Yukarı Taşı
+            <span class="context-menu-shortcut">Alt+↑</span>
+        </div>
+        <div class="context-menu-item" role="menuitem" tabindex="-1" data-action="move-down">
+            Aşağı Taşı
+            <span class="context-menu-shortcut">Alt+↓</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" role="menuitem" tabindex="-1" data-action="edit-duration">
+            Süreyi Düzenle
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" role="menuitem" tabindex="-1" data-action="describe">
+            Resmi Betimle (AI)
+        </div>
+        <div class="context-menu-item" role="menuitem" tabindex="-1" data-action="view-description">
+            Detaylı Betimlemeyi Gör
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" role="menuitem" tabindex="-1" data-action="add-text">
+            Bu Resme Yazı Ekle
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" role="menuitem" tabindex="-1" data-action="delete" style="color: #ff6b6b;">
+            Sil
+            <span class="context-menu-shortcut">Delete</span>
+        </div>
+    </div>
+
+    <!-- Ses Bağlam Menüsü -->
+    <div class="context-menu" id="audio-context-menu" role="menu" aria-label="Ses işlemleri">
+        <div class="context-menu-item" role="menuitem" tabindex="0" data-action="move-up">
+            Yukarı Taşı
+            <span class="context-menu-shortcut">Alt+↑</span>
+        </div>
+        <div class="context-menu-item" role="menuitem" tabindex="-1" data-action="move-down">
+            Aşağı Taşı
+            <span class="context-menu-shortcut">Alt+↓</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" role="menuitem" tabindex="-1" data-action="delete" style="color: #ff6b6b;">
+            Sil
+            <span class="context-menu-shortcut">Delete</span>
+        </div>
+    </div>
+
+    <!-- Yazı Bağlam Menüsü -->
+    <div class="context-menu" id="text-context-menu" role="menu" aria-label="Yazı işlemleri">
+        <div class="context-menu-item" role="menuitem" tabindex="0" data-action="edit-text">
+            Yazıyı Düzenle
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" role="menuitem" tabindex="-1" data-action="delete" style="color: #ff6b6b;">
+            Sil
+            <span class="context-menu-shortcut">Delete</span>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const path = require('path');
+
+        // Proje verileri
+        let projectData = {
+            type: 'slideshow',
+            aspectRatio: '16:9',
+            fillFrame: true,
+            transition: 'none',  // Geçiş efekti
+            images: [],
+            audioTracks: [],
+            textOverlays: [],
+            totalDuration: 0
+        };
+
+        // Proje dosya yolu
+        let currentProjectPath = null;
+
+        // UI durumu
+        let selectedImageIndex = -1;
+        let selectedAudioIndex = -1;
+        let selectedTextIndex = -1;
+        let activeContextMenu = null;
+
+        // DOM elemanları
+        const liveRegion = document.getElementById('live-region');
+        const imageList = document.getElementById('image-list');
+        const audioList = document.getElementById('audio-list');
+        const textList = document.getElementById('text-list');
+        const previewImage = document.getElementById('preview-image');
+        const previewPlaceholder = document.getElementById('preview-placeholder');
+
+        // Ekran okuyucu duyurusu
+        function announce(message) {
+            liveRegion.textContent = '';
+            setTimeout(() => {
+                liveRegion.textContent = message;
+            }, 100);
+        }
+
+        // Sayfa yüklendiğinde
+        window.addEventListener('load', () => {
+            announce('Slideshow Düzenleyici açıldı. Resim, ses ve yazı eklemek için ilgili sekmeleri kullanın. Bağlam menüsüne Uygulama tuşu ile ulaşabilirsiniz.');
+        });
+
+        // Proje ayarlarını al
+        ipcRenderer.on('slideshow-init', (event, settings) => {
+            projectData.aspectRatio = settings.aspectRatio;
+            projectData.fillFrame = settings.fillFrame;
+            updateProjectInfo();
+
+            const ratioText = settings.aspectRatio === '16:9' ? 'Yatay 16:9' : 'Dikey 9:16';
+            announce(`Proje oluşturuldu. ${ratioText} formatında.`);
+        });
+
+        // Main process resim listesi isterse gönder
+        ipcRenderer.on('request-image-list', () => {
+            console.log('Resim listesi istendi, gönderiliyor:', projectData.images.length);
+            ipcRenderer.send('image-list-response', projectData.images);
+        });
+
+        // Yazı ekleme sonucu
+        ipcRenderer.on('slideshow-text-result', (event, textData) => {
+            projectData.textOverlays.push(textData);
+            renderTextList();
+            updateStats();
+            announce(`Yazı eklendi: "${textData.content.substring(0, 30)}..."`);
+        });
+
+        // Yazı güncelleme sonucu
+        ipcRenderer.on('slideshow-text-update-result', (event, { editIndex, textData }) => {
+            const oldId = projectData.textOverlays[editIndex]?.id;
+            textData.id = oldId || textData.id;
+            projectData.textOverlays[editIndex] = textData;
+            renderTextList();
+            announce(`Yazı güncellendi: "${textData.content.substring(0, 30)}..."`);
+        });
+
+        // Video oluşturma ilerleme durumu
+        let exportProgressInterval = null;
+        ipcRenderer.on('export-progress', (event, { status, message }) => {
+            const exportBtn = document.getElementById('export-btn');
+
+            if (status === 'started') {
+                exportBtn.disabled = true;
+                exportBtn.textContent = 'Oluşturuluyor...';
+                announce(message);
+
+                let seconds = 0;
+                exportProgressInterval = setInterval(() => {
+                    seconds += 30;
+                    const minutes = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    if (minutes > 0) {
+                        announce(`Video oluşturuluyor... ${minutes} dakika ${secs} saniye geçti.`);
+                    } else {
+                        announce(`Video oluşturuluyor... ${secs} saniye geçti.`);
+                    }
+                }, 30000);
+
+            } else if (status === 'completed') {
+                if (exportProgressInterval) {
+                    clearInterval(exportProgressInterval);
+                    exportProgressInterval = null;
+                }
+                exportBtn.disabled = false;
+                exportBtn.textContent = 'Video Oluştur';
+                announce(message);
+
+            } else if (status === 'error') {
+                if (exportProgressInterval) {
+                    clearInterval(exportProgressInterval);
+                    exportProgressInterval = null;
+                }
+                exportBtn.disabled = false;
+                exportBtn.textContent = 'Video Oluştur';
+                announce(message);
+            }
+        });
+
+        // Proje bilgilerini güncelle
+        function updateProjectInfo() {
+            const ratioDisplay = document.getElementById('aspect-ratio-display');
+            ratioDisplay.textContent = projectData.aspectRatio === '16:9' ? '16:9 Yatay' : '9:16 Dikey';
+            updateTotalDuration();
+            updateStats();
+        }
+
+        // Toplam süreyi güncelle
+        function updateTotalDuration() {
+            let totalAudioDuration = 0;
+            projectData.audioTracks.forEach(track => {
+                totalAudioDuration += track.duration || 0;
+            });
+
+            if (projectData.images.length > 0 && totalAudioDuration > 0) {
+                const durationPerImage = totalAudioDuration / projectData.images.length;
+                projectData.images.forEach((img, index) => {
+                    if (!img.manualDuration) {
+                        img.duration = durationPerImage;
+                    }
+                });
+                projectData.totalDuration = totalAudioDuration;
+            } else {
+                let totalImageDuration = 0;
+                projectData.images.forEach(img => {
+                    totalImageDuration += img.duration || 5;
+                });
+                projectData.totalDuration = totalImageDuration;
+            }
+
+            const total = projectData.totalDuration;
+            const minutes = Math.floor(total / 60);
+            const seconds = Math.floor(total % 60);
+            document.getElementById('total-duration-display').textContent =
+                `Toplam: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            document.getElementById('export-btn').disabled =
+                projectData.images.length === 0 || projectData.audioTracks.length === 0;
+            document.getElementById('preview-btn').disabled = projectData.images.length === 0;
+        }
+
+        // İstatistikleri güncelle
+        function updateStats() {
+            document.getElementById('stats-images').textContent = `${projectData.images.length} resim`;
+            document.getElementById('stats-audio').textContent = `${projectData.audioTracks.length} ses`;
+            document.getElementById('stats-text').textContent = `${projectData.textOverlays.length} yazı`;
+
+            document.getElementById('image-count').textContent = projectData.images.length;
+            document.getElementById('audio-count').textContent = projectData.audioTracks.length;
+            document.getElementById('text-count').textContent = projectData.textOverlays.length;
+
+            // Boş mesajları göster/gizle
+            document.getElementById('images-empty').style.display =
+                projectData.images.length === 0 ? 'block' : 'none';
+            document.getElementById('audio-empty').style.display =
+                projectData.audioTracks.length === 0 ? 'block' : 'none';
+            document.getElementById('text-empty').style.display =
+                projectData.textOverlays.length === 0 ? 'block' : 'none';
+
+            // Tümünü Betimle düğmesini aktif/pasif yap
+            document.getElementById('describe-all-btn').disabled = projectData.images.length === 0;
+        }
+
+        // Geçiş efekti değişikliği
+        document.getElementById('transition-select').addEventListener('change', (e) => {
+            projectData.transition = e.target.value;
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            announce(`Geçiş efekti ${selectedOption.text} olarak ayarlandı.`);
+        });
+
+        // Tab değiştirme
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Tüm tabları pasif yap
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                    b.setAttribute('tabindex', '-1');
+                });
+                document.querySelectorAll('.tab-content').forEach(c => {
+                    c.classList.remove('active');
+                });
+
+                // Seçili tabı aktif yap
+                btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
+                btn.setAttribute('tabindex', '0');
+
+                const panelId = btn.getAttribute('aria-controls');
+                document.getElementById(panelId).classList.add('active');
+
+                announce(`${btn.textContent.trim()} sekmesi açıldı.`);
+            });
+
+            // Klavye ile tab gezinme
+            btn.addEventListener('keydown', (e) => {
+                const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+                const currentIndex = tabs.indexOf(e.target);
+
+                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    const nextIndex = e.key === 'ArrowRight'
+                        ? (currentIndex + 1) % tabs.length
+                        : (currentIndex - 1 + tabs.length) % tabs.length;
+                    tabs[nextIndex].click();
+                    tabs[nextIndex].focus();
+                }
+            });
+        });
+
+        // Resim ekleme
+        document.getElementById('add-image-btn').addEventListener('click', async () => {
+            ipcRenderer.send('slideshow-add-images');
+        });
+
+        ipcRenderer.on('slideshow-images-selected', async (event, filePaths) => {
+            for (const filePath of filePaths) {
+                // Resim bilgilerini al
+                const info = await ipcRenderer.invoke('get-image-info', filePath);
+
+                const imageData = {
+                    id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    path: filePath,
+                    filename: path.basename(filePath),
+                    width: info.width,
+                    height: info.height,
+                    orientation: info.width > info.height ? 'landscape' : 'portrait',
+                    duration: 5, // varsayılan
+                    shortDescription: null,
+                    longDescription: null,
+                    order: projectData.images.length + 1
+                };
+
+                projectData.images.push(imageData);
+            }
+
+            renderImageList();
+            updateTotalDuration();
+            updateStats();
+            announce(`${filePaths.length} resim eklendi.`);
+        });
+
+        // Resim listesi render et
+        function restoreFocus() {
+            setTimeout(() => {
+                const items = imageList.querySelectorAll('.list-item');
+                if (selectedImageIndex >= 0 && items[selectedImageIndex]) {
+                    items.forEach(item => item.setAttribute('tabindex', '-1'));
+                    items[selectedImageIndex].setAttribute('tabindex', '0');
+                    items[selectedImageIndex].focus();
+                } else if (items.length > 0) {
+                    // Seçili yoksa ilkine odaklan
+                    items[0].setAttribute('tabindex', '0');
+                }
+            }, 50);
+        }
+
+        function renderImageList() {
+            imageList.innerHTML = '';
+
+            projectData.images.forEach((img, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.setAttribute('role', 'option');
+                li.setAttribute('tabindex', index === 0 ? '0' : '-1');
+                li.setAttribute('aria-selected', index === selectedImageIndex ? 'true' : 'false');
+                li.dataset.index = index;
+
+                const orientationText = img.orientation === 'landscape' ? 'Yatay' : 'Dikey';
+                const displayName = img.shortDescription || img.filename;
+                const durationText = `${img.duration.toFixed(1)}s`;
+
+                li.innerHTML = `
+                    <div class="item-title">${displayName}</div>
+                    <div class="item-info">
+                        ${img.width}x${img.height} • ${orientationText}
+                        <span class="item-duration">${durationText}</span>
+                    </div>
+                `;
+
+                // Ekran okuyucu için tam açıklama
+                li.setAttribute('aria-label',
+                    `${index + 1}. ${displayName}, ${img.width} çarpı ${img.height} piksel, ${orientationText}, ${img.duration.toFixed(1)} saniye`);
+
+                if (index === selectedImageIndex) {
+                    li.classList.add('selected');
+                }
+
+                li.addEventListener('click', () => selectImage(index));
+                li.addEventListener('keydown', handleImageListKeydown);
+
+                imageList.appendChild(li);
+            });
+        }
+
+        // Resim seçimi
+        function selectImage(index) {
+            selectedImageIndex = index;
+            renderImageList();
+
+            const img = projectData.images[index];
+            if (img) {
+                // Önizleme göster
+                previewImage.src = `file://${img.path}`;
+                previewImage.style.display = 'block';
+                previewPlaceholder.style.display = 'none';
+                document.getElementById('preview-btn').disabled = false;
+
+                announce(`${img.shortDescription || img.filename} seçildi. ${img.width} çarpı ${img.height} piksel.`);
+            }
+
+            // Listedeki öğeye odaklan
+            restoreFocus();
+        }
+
+        // Resim listesi klavye işlemleri
+        function handleImageListKeydown(e) {
+            const items = Array.from(imageList.querySelectorAll('.list-item'));
+            const currentIndex = items.indexOf(e.target);
+
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (currentIndex < items.length - 1) {
+                        selectImage(currentIndex + 1);
+                    }
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (currentIndex > 0) {
+                        selectImage(currentIndex - 1);
+                    }
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    showContextMenu('image', e.target.getBoundingClientRect());
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    hideAllContextMenus();
+                    break;
+                case 'Delete':
+                    e.preventDefault();
+                    deleteImage(currentIndex);
+                    break;
+                case 'ContextMenu':
+                case 'F10':
+                    if (e.key === 'F10' && !e.shiftKey) break;
+                    e.preventDefault();
+                    showContextMenu('image', e.target.getBoundingClientRect());
+                    break;
+            }
+
+            // Alt + yukarı/aşağı ile taşı
+            if (e.altKey) {
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    moveImage(currentIndex, 'up');
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    moveImage(currentIndex, 'down');
+                }
+            }
+        }
+
+        // Uygulama tuşu için genel olay dinleyicisi
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+                const activeElement = document.activeElement;
+                if (activeElement.closest('#image-list')) {
+                    e.preventDefault();
+                    showContextMenu('image', activeElement.getBoundingClientRect());
+                } else if (activeElement.closest('#audio-list')) {
+                    e.preventDefault();
+                    showContextMenu('audio', activeElement.getBoundingClientRect());
+                } else if (activeElement.closest('#text-list')) {
+                    e.preventDefault();
+                    showContextMenu('text', activeElement.getBoundingClientRect());
+                }
+            }
+        });
+
+        // Bağlam menüsünü göster
+        function showContextMenu(type, rect) {
+            // Önceki menüyü kapat
+            hideAllContextMenus();
+
+            const menu = document.getElementById(`${type}-context-menu`);
+            menu.style.top = `${rect.bottom + 5}px`;
+            menu.style.left = `${rect.left}px`;
+            menu.classList.add('visible');
+            activeContextMenu = menu;
+
+            // İlk öğeye odaklan
+            const firstItem = menu.querySelector('[role="menuitem"]');
+            if (firstItem) firstItem.focus();
+
+            announce('Bağlam menüsü açıldı. Ok tuşları ile gezinin, Enter ile seçin, Escape ile kapatın.');
+        }
+
+        // Tüm bağlam menülerini kapat
+        function hideAllContextMenus() {
+            document.querySelectorAll('.context-menu').forEach(menu => {
+                menu.classList.remove('visible');
+            });
+            activeContextMenu = null;
+        }
+
+        // Bağlam menüsü dışına tıklandığında kapat
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                hideAllContextMenus();
+            }
+        });
+
+        // Escape ile menüyü kapat
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && activeContextMenu) {
+                e.preventDefault();
+                e.stopPropagation();
+                hideAllContextMenus();
+                restoreActiveFocus();
+            }
+        });
+
+        // Bağlam menüsü öğe seçimi
+        document.querySelectorAll('.context-menu-item').forEach(item => {
+            item.addEventListener('click', () => handleContextMenuAction(item.dataset.action));
+            item.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleContextMenuAction(item.dataset.action);
+                }
+                // Menü içi gezinme
+                const items = Array.from(item.parentElement.querySelectorAll('[role="menuitem"]'));
+                const currentIndex = items.indexOf(e.target);
+                if (e.key === 'ArrowDown' && currentIndex < items.length - 1) {
+                    e.preventDefault();
+                    items[currentIndex + 1].focus();
+                } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+                    e.preventDefault();
+                    items[currentIndex - 1].focus();
+                } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hideAllContextMenus();
+                    restoreActiveFocus();
+                }
+            });
+        });
+
+        // Bağlam menüsü aksiyonları
+        function handleContextMenuAction(action) {
+            hideAllContextMenus();
+
+            switch (action) {
+                case 'move-up':
+                    moveImage(selectedImageIndex, 'up');
+                    break;
+                case 'move-down':
+                    moveImage(selectedImageIndex, 'down');
+                    break;
+                case 'edit-duration':
+                    editImageDuration(selectedImageIndex);
+                    break;
+                case 'describe':
+                    describeImage(selectedImageIndex);
+                    break;
+                case 'view-description':
+                    viewImageDescription(selectedImageIndex);
+                    break;
+                case 'add-text':
+                    addTextToImage(selectedImageIndex);
+                    break;
+                case 'delete':
+                    deleteImage(selectedImageIndex);
+                    break;
+            }
+        }
+
+        // Resmi taşı
+        function moveImage(index, direction) {
+            const newIndex = direction === 'up' ? index - 1 : index + 1;
+            if (newIndex < 0 || newIndex >= projectData.images.length) {
+                announce(direction === 'up' ? 'Zaten en üstte.' : 'Zaten en altta.');
+                return;
+            }
+
+            // Swap
+            [projectData.images[index], projectData.images[newIndex]] =
+                [projectData.images[newIndex], projectData.images[index]];
+
+            selectedImageIndex = newIndex;
+            renderImageList();
+
+            const img = projectData.images[newIndex];
+            announce(`${img.shortDescription || img.filename} ${direction === 'up' ? 'yukarı' : 'aşağı'} taşındı. Şimdi ${newIndex + 1}. sırada.`);
+
+            restoreFocus();
+        }
+
+        // Resim sil
+        function deleteImage(index) {
+            const img = projectData.images[index];
+            projectData.images.splice(index, 1);
+
+            if (selectedImageIndex >= projectData.images.length) {
+                selectedImageIndex = projectData.images.length - 1;
+            }
+
+            renderImageList();
+            updateTotalDuration();
+            updateStats();
+
+            if (projectData.images.length === 0) {
+                previewImage.style.display = 'none';
+                previewPlaceholder.style.display = 'flex';
+                document.getElementById('preview-btn').disabled = true;
+                // Liste boşaldığında boş mesajına veya ekle butonuna odaklanabiliriz ama şimdilik list containerda kalsın
+                document.getElementById('add-image-btn').focus();
+            } else {
+                if (selectedImageIndex >= 0) {
+                    selectImage(selectedImageIndex);
+                }
+                restoreFocus();
+            }
+
+            announce(`${img.shortDescription || img.filename} silindi.`);
+        }
+
+        // Resim süresini düzenle
+        async function editImageDuration(index) {
+            const img = projectData.images[index];
+            const newDuration = await ipcRenderer.invoke('show-input-dialog', {
+                title: 'Süre Düzenle',
+                message: `"${img.shortDescription || img.filename}" için ekranda kalma süresini saniye olarak girin:`,
+                defaultValue: img.duration.toString()
+            });
+
+            if (newDuration !== null) {
+                const duration = parseFloat(newDuration);
+                if (!isNaN(duration) && duration > 0) {
+                    img.duration = duration;
+                    img.manualDuration = true;
+                    renderImageList();
+                    updateTotalDuration();
+                    updateTotalDuration();
+                    announce(`Süre ${duration} saniye olarak ayarlandı.`);
+                    restoreFocus();
+                }
+            }
+        }
+
+        // AI ile resim betimleme
+        async function describeImage(index) {
+            const img = projectData.images[index];
+            announce('Resim yapay zeka ile betimleniyor, lütfen bekleyin...');
+
+            try {
+                const result = await ipcRenderer.invoke('describe-image-ai', img.path);
+
+                img.shortDescription = result.short;
+                img.longDescription = result.long;
+
+                renderImageList();
+                renderImageList();
+                announce(`Betimleme tamamlandı: ${result.short}`);
+                restoreFocus();
+            } catch (error) {
+                announce(`Betimleme hatası: ${error.message}`);
+            }
+        }
+
+        // Detaylı betimlemeyi göster
+        function viewImageDescription(index) {
+            const img = projectData.images[index];
+            if (img.longDescription) {
+                ipcRenderer.invoke('show-message-dialog', {
+                    title: 'Detaylı Betimleme',
+                    message: img.longDescription
+                });
+                announce(img.longDescription);
+            } else {
+                announce('Bu resim için henüz betimleme yapılmadı. Önce "Resmi Betimle" seçeneğini kullanın.');
+            }
+        }
+
+        // Bu resme yazı ekle
+        function addTextToImage(index) {
+            ipcRenderer.send('slideshow-add-text-to-image', {
+                imageIds: [projectData.images[index].id]
+            });
+        }
+
+        // Ses ekleme
+        document.getElementById('add-audio-btn').addEventListener('click', () => {
+            ipcRenderer.send('slideshow-add-audio');
+        });
+
+        ipcRenderer.on('slideshow-audio-selected', async (event, filePaths) => {
+            for (const filePath of filePaths) {
+                const info = await ipcRenderer.invoke('get-audio-info', filePath);
+
+                const audioData = {
+                    id: `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    path: filePath,
+                    filename: path.basename(filePath),
+                    duration: info.duration,
+                    order: projectData.audioTracks.length + 1
+                };
+
+                projectData.audioTracks.push(audioData);
+            }
+
+            renderAudioList();
+            updateTotalDuration();
+            updateStats();
+            announce(`${filePaths.length} ses dosyası eklendi.`);
+        });
+
+        // Ses listesini render et
+        function renderAudioList() {
+            audioList.innerHTML = '';
+
+            projectData.audioTracks.forEach((audio, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.setAttribute('role', 'option');
+                li.setAttribute('tabindex', index === 0 ? '0' : '-1');
+                li.setAttribute('aria-selected', index === selectedAudioIndex ? 'true' : 'false');
+                li.dataset.index = index;
+
+                const minutes = Math.floor(audio.duration / 60);
+                const seconds = Math.floor(audio.duration % 60);
+                const durationText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                li.innerHTML = `
+                    <div class="item-title">${audio.filename}</div>
+                    <div class="item-info">
+                        Süre: ${durationText}
+                        <span class="item-duration">${durationText}</span>
+                    </div>
+                `;
+
+                li.setAttribute('aria-label',
+                    `${index + 1}. ${audio.filename}, ${durationText} süresinde`);
+
+                if (index === selectedAudioIndex) {
+                    li.classList.add('selected');
+                }
+
+                li.addEventListener('click', () => selectAudio(index));
+
+                // Klavye yönetimi
+                li.addEventListener('keydown', (e) => {
+                    const items = Array.from(audioList.querySelectorAll('.list-item'));
+                    const currentIndex = items.indexOf(e.target);
+
+                    switch (e.key) {
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            if (currentIndex < items.length - 1) {
+                                selectAudio(currentIndex + 1);
+                            }
+                            break;
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            if (currentIndex > 0) {
+                                selectAudio(currentIndex - 1);
+                            }
+                            break;
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            showContextMenu('audio', e.target.getBoundingClientRect());
+                            break;
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            hideAllContextMenus();
+                            break;
+                        case 'Delete':
+                            e.preventDefault();
+                            // deleteAudio fonksiyonu tanımlı olmalı (genelde actionlarda var)
+                            // Burada basitçe action çağırabiliriz veya implemente edebiliriz.
+                            // deleteAudio(currentIndex); // deleteAudio henüz global scope'da değil, context menu action'undan bakalım.
+                            if (typeof deleteAudio === 'function') deleteAudio(currentIndex);
+                            else {
+                                // Fallback: siliyoruz
+                                projectData.audioTracks.splice(index, 1);
+                                renderAudioList();
+                                updateTotalDuration();
+                                updateStats();
+                                announce('Ses silindi.');
+                            }
+                            break;
+                        case 'ContextMenu':
+                        case 'F10':
+                            if (e.key === 'F10' && !e.shiftKey) break;
+                            e.preventDefault();
+                            showContextMenu('audio', e.target.getBoundingClientRect());
+                            break;
+                    }
+                });
+
+                // Sağ tık menüsü
+                li.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    selectAudio(index);
+                    showContextMenu('audio', li.getBoundingClientRect());
+                });
+
+                audioList.appendChild(li);
+            });
+        }
+
+        // Ses seçimi
+        function selectAudio(index) {
+            selectedAudioIndex = index;
+            renderAudioList();
+
+            const audio = projectData.audioTracks[index];
+            if (audio) {
+                announce(`${audio.filename} seçildi.`);
+            }
+        }
+
+
+
+        // Önizleme
+        document.getElementById('preview-btn').addEventListener('click', () => {
+            const activeTab = document.querySelector('.tab-btn.active').id;
+            let mode = 'full';
+            let targetId = null;
+
+            if (activeTab === 'images-tab' && selectedImageIndex >= 0) {
+                mode = 'image';
+                targetId = projectData.images[selectedImageIndex].id;
+            } else if (activeTab === 'audio-tab' && selectedAudioIndex >= 0) {
+                mode = 'audio';
+                targetId = projectData.audioTracks[selectedAudioIndex].id;
+            } else if (activeTab === 'text-tab' && selectedTextIndex >= 0) {
+                mode = 'text';
+                targetId = projectData.textOverlays[selectedTextIndex].id;
+            }
+
+            ipcRenderer.send('slideshow-preview', {
+                projectData: projectData,
+                options: { mode, targetId }
+            });
+
+            const modeText = mode === 'full' ? 'Tam proje' : (mode === 'image' ? 'Seçili resim' : (mode === 'audio' ? 'Seçili ses' : 'Seçili yazı'));
+            announce(`${modeText} önizlemesi başlıyor.`);
+        });
+
+        // Alt + P kısayolu
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && e.key.toLowerCase() === 'p') {
+                e.preventDefault();
+                document.getElementById('preview-btn').click();
+            }
+        });
+
+        // Projeyi kapat
+        document.getElementById('close-btn').addEventListener('click', () => {
+            ipcRenderer.send('slideshow-close');
+        });
+
+        // Video oluştur
+        document.getElementById('export-btn').addEventListener('click', () => {
+            ipcRenderer.send('slideshow-export', projectData);
+            announce('Video oluşturma başlıyor...');
+        });
+
+        // Tümünü Betimle
+        document.getElementById('describe-all-btn').addEventListener('click', async () => {
+            if (projectData.images.length === 0) return;
+
+            const btn = document.getElementById('describe-all-btn');
+            btn.disabled = true;
+            btn.textContent = 'Betimleniyor...';
+
+            let describedCount = 0;
+            const totalCount = projectData.images.length;
+
+            for (let i = 0; i < projectData.images.length; i++) {
+                const img = projectData.images[i];
+
+                // Zaten betimlenmiş olanları atla
+                if (img.shortDescription) {
+                    describedCount++;
+                    continue;
+                }
+
+                announce(`${i + 1}/${totalCount}: ${img.filename} betimleniyor...`);
+
+                try {
+                    const result = await ipcRenderer.invoke('describe-image-ai', img.path);
+                    img.shortDescription = result.short;
+                    img.longDescription = result.long;
+                    describedCount++;
+
+                    renderImageList();
+                } catch (error) {
+                    console.error(`Betimleme hatası (${img.filename}):`, error);
+                    announce(`${img.filename} betimlenemedi: ${error.message}`);
+                }
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Tümünü Betimle';
+            announce(`${describedCount} resim betimlendi.`);
+        });
+
+        // Projeyi Kaydet
+        document.getElementById('save-project-btn').addEventListener('click', () => {
+            ipcRenderer.send('slideshow-save-project', projectData);
+        });
+
+        // Proje kaydedildi bildirimi
+        ipcRenderer.on('slideshow-project-saved', (event, filePath) => {
+            currentProjectPath = filePath;
+            announce(`Proje kaydedildi: ${path.basename(filePath)}`);
+        });
+
+        // Proje yüklendi
+        ipcRenderer.on('slideshow-project-loaded', (event, data) => {
+            projectData = data;
+            currentProjectPath = data.projectPath;
+
+            // UI'ı güncelle
+            document.getElementById('transition-select').value = data.transition || 'none';
+            renderImageList();
+            renderAudioList();
+            renderTextList();
+            updateProjectInfo();
+            updateStats();
+
+            announce(`Proje yüklendi: ${projectData.images.length} resim, ${projectData.audioTracks.length} ses.`);
+        });
+
+        // Ctrl+S ile kaydet
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                document.getElementById('save-project-btn').click();
+            }
+        });
+
+        // Yazı Ekleme
+        document.getElementById('add-text-btn').addEventListener('click', () => {
+            ipcRenderer.send('slideshow-add-text', {
+                images: projectData.images
+            });
+        });
+
+        // Yazı listesini render et
+        function renderTextList() {
+            textList.innerHTML = '';
+
+            projectData.textOverlays.forEach((text, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                if (index === selectedTextIndex) {
+                    li.classList.add('selected');
+                }
+                li.setAttribute('role', 'option');
+                li.setAttribute('tabindex', index === 0 ? '0' : '-1');
+                li.setAttribute('aria-selected', index === selectedTextIndex ? 'true' : 'false');
+                li.dataset.index = index;
+
+                const shortContent = text.content.length > 40
+                    ? text.content.substring(0, 40) + '...'
+                    : text.content;
+                const imageCount = text.targetImages.length;
+
+                // Hangi resimlerde gösterileceği
+                let imageNames = '';
+                if (text.targetImages.length <= 3) {
+                    imageNames = text.targetImages.map(imgId => {
+                        const img = projectData.images.find(i => i.id === imgId);
+                        return img ? (img.shortDescription || img.filename).substring(0, 15) : 'Bilinmiyor';
+                    }).join(', ');
+                } else {
+                    imageNames = `${text.targetImages.length} resimde`;
+                }
+
+                li.innerHTML = `
+                    <div class="item-title">${shortContent}</div>
+                    <div class="item-info">
+                        ${imageNames} • ${text.position} konum
+                    </div>
+                `;
+
+                li.setAttribute('aria-label',
+                    `${index + 1}. "${shortContent}", ${imageCount} resimde gösterilecek, ${text.position} konumda`);
+
+                // Tıklama ile seçim
+                li.addEventListener('click', () => selectText(index));
+
+                // Sağ tıklama ile bağlam menüsü
+                li.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    selectText(index);
+                    showContextMenu('text', li.getBoundingClientRect());
+                });
+
+                textList.appendChild(li);
+            });
+        }
+
+        // Yazı seçme
+        function selectText(index) {
+            selectedTextIndex = index;
+            const items = textList.querySelectorAll('.list-item');
+            items.forEach((item, i) => {
+                item.classList.toggle('selected', i === index);
+                item.setAttribute('aria-selected', i === index ? 'true' : 'false');
+                item.setAttribute('tabindex', i === index ? '0' : '-1');
+            });
+
+            if (items[index]) {
+                items[index].focus();
+                const text = projectData.textOverlays[index];
+                const shortContent = text.content.length > 40
+                    ? text.content.substring(0, 40) + '...'
+                    : text.content;
+                announce(`Yazı ${index + 1}: "${shortContent}"`);
+            }
+        }
+
+        // Yazı silme
+        function deleteText(index) {
+            if (index < 0 || index >= projectData.textOverlays.length) return;
+
+            const text = projectData.textOverlays[index];
+            const shortContent = text.content.substring(0, 30);
+
+            projectData.textOverlays.splice(index, 1);
+
+            if (selectedTextIndex >= projectData.textOverlays.length) {
+                selectedTextIndex = projectData.textOverlays.length - 1;
+            }
+
+            renderTextList();
+            updateStats();
+            announce(`"${shortContent}..." silindi.`);
+        }
+
+        // Yazı listesi klavye navigasyonu
+        textList.addEventListener('keydown', (e) => {
+            if (projectData.textOverlays.length === 0) return;
+
+            const currentIndex = selectedTextIndex >= 0 ? selectedTextIndex : 0;
+
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (currentIndex < projectData.textOverlays.length - 1) {
+                        selectText(currentIndex + 1);
+                    }
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (currentIndex > 0) {
+                        selectText(currentIndex - 1);
+                    }
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    showContextMenu('text', document.activeElement.getBoundingClientRect());
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    hideAllContextMenus();
+                    break;
+                case 'Delete':
+                    e.preventDefault();
+                    deleteText(currentIndex);
+                    break;
+                case 'Enter':
+                    // Enter tuşu ile düzenleme
+                    e.preventDefault();
+                    if (currentIndex >= 0 && projectData.textOverlays[currentIndex]) {
+                        const text = projectData.textOverlays[currentIndex];
+                        console.log('Enter ile yazı düzenleme:', text);
+                        announce('Yazı düzenleme diyaloğu açılıyor...');
+                        ipcRenderer.send('slideshow-edit-text', {
+                            images: projectData.images,
+                            editText: text,
+                            editIndex: currentIndex
+                        });
+                    }
+                    break;
+                case 'ContextMenu':
+                case 'F10':
+                    if (e.key === 'F10' && !e.shiftKey) break;
+                    e.preventDefault();
+                    showContextMenu('text', e.target.getBoundingClientRect());
+                    break;
+            }
+        });
+
+        // Yazı bağlam menüsü işlemleri
+        document.getElementById('text-context-menu').addEventListener('click', (e) => {
+            const menuItem = e.target.closest('.context-menu-item');
+            if (!menuItem) {
+                console.log('Menü öğesi bulunamadı');
+                return;
+            }
+
+            const action = menuItem.dataset.action;
+            console.log('Yazı bağlam menüsü action:', action, 'selectedTextIndex:', selectedTextIndex);
+
+            hideAllContextMenus();
+
+            if (!action) {
+                console.log('Action yok');
+                return;
+            }
+
+            if (selectedTextIndex < 0) {
+                console.log('Index geçersiz:', selectedTextIndex);
+                announce('Lütfen önce bir yazı seçin.');
+                return;
+            }
+
+            const text = projectData.textOverlays[selectedTextIndex];
+            if (!text) {
+                console.log('Yazı bulunamadı, index:', selectedTextIndex);
+                return;
+            }
+
+            console.log('Seçili yazı:', text);
+
+            switch (action) {
+                case 'edit-text':
+                    console.log('Yazı düzenleme diyaloğu açılıyor...');
+                    console.log('Gönderilecek veri:', {
+                        images: projectData.images.length + ' adet resim',
+                        editText: text,
+                        editIndex: selectedTextIndex
+                    });
+
+                    // Yazıyı düzenlemek için diyaloğu aç
+                    ipcRenderer.send('slideshow-edit-text', {
+                        images: projectData.images,
+                        editText: text,
+                        editIndex: selectedTextIndex
+                    });
+
+                    announce('Yazı düzenleme diyaloğu açılıyor...');
+                    break;
+                case 'delete':
+                    deleteText(selectedTextIndex);
+                    break;
+            }
+        });
+
+        // ESC ile kapat
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !activeContextMenu) {
+                ipcRenderer.send('slideshow-close');
+            }
+        });
+        // Aktif tabdaki seçili öğeye odaklan
+        function restoreActiveFocus() {
+            const activeTabBtn = document.querySelector('.tab-btn.active');
+            if (!activeTabBtn) return;
+
+            const tabId = activeTabBtn.id;
+            let items;
+            let index;
+
+            if (tabId === 'images-tab') {
+                items = document.querySelectorAll('#image-list .list-item');
+                index = selectedImageIndex;
+            } else if (tabId === 'audio-tab') {
+                items = document.querySelectorAll('#audio-list .list-item');
+                index = selectedAudioIndex;
+            } else if (tabId === 'text-tab') {
+                items = document.querySelectorAll('#text-list .list-item');
+                index = selectedTextIndex;
+            }
+
+            if (items && index >= 0 && items[index]) {
+                items[index].focus();
+            } else if (items && items.length > 0) {
+                // Seçim yoksa ilkine odaklan
+                items[0].focus();
+            } else {
+                // Liste boşsa listeye odaklan
+                const activeList = document.querySelector('.tab-content.active .item-list');
+                if (activeList) activeList.focus();
+            }
+        }
+    </script>
+</body>
+
+</html>
