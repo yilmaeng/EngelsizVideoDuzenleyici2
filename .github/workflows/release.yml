@@ -1,4 +1,4 @@
-name: Production Release
+name: Production Release (DMG)
 
 on:
   workflow_dispatch:
@@ -31,39 +31,17 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          
       - run: npm ci
-      - run: npm run build:mac
       
-      # Fix permissions & codesign
-      - run: |
-          if [ -d "dist/mac" ]; then
-            xattr -cr dist/mac/
-            codesign --force --deep --sign - "dist/mac/Engelsiz Video Düzenleyicisi.app" || true
-          fi
-          if [ -d "dist/mac-arm64" ]; then
-            xattr -cr dist/mac-arm64/
-            codesign --force --deep --sign - "dist/mac-arm64/Engelsiz Video Düzenleyicisi.app" || true
-          fi
-
-      # ZIP with symlinks preserved (-y flag is critical!)
-      - run: |
-          if [ -d "dist/mac" ]; then
-            cd dist/mac
-            zip -y -r ../../mac-intel.zip .
-            cd ../..
-          fi
-          if [ -d "dist/mac-arm64" ]; then
-            cd dist/mac-arm64
-            zip -y -r ../../mac-silicon.zip .
-            cd ../..
-          fi
+      # Build DMGs (x64 and arm64)
+      # package.json is configured to build 'dmg' now
+      - run: npm run build:mac
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mac-zips
-          path: |
-            mac-intel.zip
-            mac-silicon.zip
+          name: mac-dmgs
+          path: dist/*.dmg
           retention-days: 5
 
   publish:
@@ -82,8 +60,11 @@ jobs:
             zip -r ../release/EngelsizVideoDuzenleyici-Windows.zip windows-build/
             cd ..
           fi
-          cp artifacts/mac-zips/mac-intel.zip release/EngelsizVideoDuzenleyici-Mac-Intel.zip
-          cp artifacts/mac-zips/mac-silicon.zip release/EngelsizVideoDuzenleyici-Mac-Silicon.zip
+          
+          # Move DMGs to release folder
+          if [ -d "artifacts/mac-dmgs" ]; then
+             cp artifacts/mac-dmgs/*.dmg release/
+          fi
           
       - uses: softprops/action-gh-release@v1
         with:

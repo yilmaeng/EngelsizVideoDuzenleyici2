@@ -32,7 +32,7 @@
     "mac": {
       "target": [
         {
-          "target": "dir",
+          "target": "dmg",
           "arch": [
             "x64",
             "arm64"
