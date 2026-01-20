@@ -69,11 +69,11 @@ jobs:
           echo "=== DMG files ==="
           ls -la dist/*.dmg 2>/dev/null || echo "No DMG files"
 
-      - name: Upload Mac Intel DMG
+      - name: Upload Mac DMG files
         uses: actions/upload-artifact@v4
         with:
-          name: mac-intel-dmg
-          path: dist/Engelsiz*.dmg
+          name: mac-dmg
+          path: "dist/*.dmg"
           retention-days: 30
           if-no-files-found: warn
 
@@ -129,8 +129,8 @@ jobs:
           fi
           
           # Mac DMG dosyaları
-          if [ -d "artifacts/mac-intel-dmg" ]; then
-             cp artifacts/mac-intel-dmg/*.dmg release_files/ 2>/dev/null || true
+          if [ -d "artifacts/mac-dmg" ]; then
+             cp artifacts/mac-dmg/*.dmg release_files/ 2>/dev/null || true
           fi
           
           echo "Release files:"
