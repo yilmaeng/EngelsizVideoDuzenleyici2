@@ -1,0 +1,253 @@
+name: Build All Platforms
+
+on:
+  # Manuel tetikleme (GitHub Actions sayfasından)
+  workflow_dispatch:
+  
+  # Tag oluşturulduğunda (release için)
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # ==================== WINDOWS BUILD ====================
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows
+        run: npm run build:win
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/win-unpacked/
+          retention-days: 30
+
+  # ==================== MAC BUILD ====================
+  build-mac:
+    runs-on: macos-14  # Apple Silicon runner - daha yeni ve stabil
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python (native modüller için)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          echo "Node modules installed successfully"
+
+      - name: Debug - Show system info
+        run: |
+          echo "=== System Info ==="
+          uname -a
+          node --version
+          npm --version
+          echo "=== Xcode version ==="
+          xcodebuild -version || true
+          
+      - name: Build Mac (Intel + Apple Silicon)
+        run: |
+          echo "Starting Mac build..."
+          npm run build:mac 2>&1 | tee build_output.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+          
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "::error::Build failed with exit code $BUILD_EXIT_CODE"
+            cat build_output.log
+            exit $BUILD_EXIT_CODE
+          fi
+          
+          echo "Build completed successfully"
+          
+      - name: Debug - Show build output structure
+        run: |
+          echo "=== dist folder structure ==="
+          ls -la dist/ || echo "No dist folder"
+          
+          if [ -d "dist/mac" ]; then
+            echo "=== mac (x64) folder ==="
+            ls -la "dist/mac/"
+            echo "=== App contents ==="
+            ls -la "dist/mac/Engelsiz Video Düzenleyicisi.app/Contents/" || true
+            echo "=== Frameworks ==="
+            ls -la "dist/mac/Engelsiz Video Düzenleyicisi.app/Contents/Frameworks/" || true
+          fi
+          
+          if [ -d "dist/mac-arm64" ]; then
+            echo "=== mac-arm64 folder ==="
+            ls -la "dist/mac-arm64/"
+            echo "=== App contents ==="
+            ls -la "dist/mac-arm64/Engelsiz Video Düzenleyicisi.app/Contents/" || true
+          fi
+
+      - name: Fix permissions and remove quarantine (x64)
+        run: |
+          if [ -d "dist/mac" ]; then
+            echo "Fixing x64 build..."
+            APP_PATH="dist/mac/Engelsiz Video Düzenleyicisi.app"
+            
+            # Quarantine kaldır
+            xattr -cr "$APP_PATH"
+            
+            # Çalıştırılabilir dosyalara execute izni ver
+            chmod +x "$APP_PATH/Contents/MacOS/Engelsiz Video Düzenleyicisi" || true
+            find "$APP_PATH/Contents/Frameworks" -name "*.dylib" -exec chmod +x {} \; 2>/dev/null || true
+            find "$APP_PATH/Contents/Frameworks" -type f -perm +0111 -exec chmod +x {} \; 2>/dev/null || true
+            
+            # Ad-hoc signing (development build için)
+            echo "Ad-hoc signing x64..."
+            codesign --force --deep --sign - "$APP_PATH" 2>&1 || echo "Signing warning (non-fatal)"
+            
+            # Verify
+            echo "Verifying x64 build..."
+            codesign -vvv "$APP_PATH" 2>&1 || echo "Verification warning (expected for ad-hoc)"
+          fi
+
+      - name: Fix permissions and remove quarantine (arm64)
+        run: |
+          if [ -d "dist/mac-arm64" ]; then
+            echo "Fixing arm64 build..."
+            APP_PATH="dist/mac-arm64/Engelsiz Video Düzenleyicisi.app"
+            
+            # Quarantine kaldır
+            xattr -cr "$APP_PATH"
+            
+            # Çalıştırılabilir dosyalara execute izni ver
+            chmod +x "$APP_PATH/Contents/MacOS/Engelsiz Video Düzenleyicisi" || true
+            find "$APP_PATH/Contents/Frameworks" -name "*.dylib" -exec chmod +x {} \; 2>/dev/null || true
+            find "$APP_PATH/Contents/Frameworks" -type f -perm +0111 -exec chmod +x {} \; 2>/dev/null || true
+            
+            # Ad-hoc signing
+            echo "Ad-hoc signing arm64..."
+            codesign --force --deep --sign - "$APP_PATH" 2>&1 || echo "Signing warning (non-fatal)"
+            
+            # Verify
+            echo "Verifying arm64 build..."
+            codesign -vvv "$APP_PATH" 2>&1 || echo "Verification warning (expected for ad-hoc)"
+          fi
+
+      - name: List DMG outputs
+        run: |
+          echo "=== DMG files in dist ==="
+          ls -lah dist/*.dmg 2>/dev/null || echo "No DMG files found"
+          echo "=== All dist contents ==="
+          ls -lah dist/ 2>/dev/null || echo "No dist folder"
+
+      - name: Upload Mac x64 DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-x64-dmg
+          path: dist/*x64*.dmg
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload Mac ARM64 DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-arm64-dmg
+          path: dist/*arm64*.dmg
+          retention-days: 30
+          if-no-files-found: warn
+
+  # ==================== LINUX BUILD (DISABLED) ====================
+  # build-linux:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         cache: 'npm'
+  #
+  #     - name: Install dependencies
+  #       run: npm ci
+  #
+  #     - name: Build Linux
+  #       run: npm run build:linux
+  #
+  #     - name: Upload Linux Artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: linux-build
+  #         path: |
+  #           dist/*.AppImage
+  #           dist/*.deb
+  #         retention-days: 30
+
+  # ==================== RELEASE (Tag olduğunda) ====================
+  create-release:
+    needs: [build-windows, build-mac]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Prepare Release Files
+        run: |
+          mkdir -p release_files
+          
+          # Windows (klasör olarak indiği için zip'le)
+          if [ -d "artifacts/windows-build" ]; then
+             cd artifacts
+             zip -r ../release_files/EngelsizVideoDuzenleyici-Windows.zip windows-build/
+             cd ..
+          fi
+          
+          # Mac DMG dosyaları
+          echo "Looking for Mac DMG files..."
+          find artifacts -name "*.dmg" -type f
+          
+          # x64 DMG
+          if [ -d "artifacts/mac-x64-dmg" ]; then
+             cp artifacts/mac-x64-dmg/*.dmg release_files/EngelsizVideoDuzenleyici-Mac-Intel.dmg 2>/dev/null || true
+          fi
+          
+          # arm64 DMG
+          if [ -d "artifacts/mac-arm64-dmg" ]; then
+             cp artifacts/mac-arm64-dmg/*.dmg release_files/EngelsizVideoDuzenleyici-Mac-AppleSilicon.dmg 2>/dev/null || true
+          fi
+          
+          echo "Release files:"
+          ls -la release_files/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release_files/EngelsizVideoDuzenleyici-Windows.zip
+            release_files/EngelsizVideoDuzenleyici-Mac-Intel.dmg
+            release_files/EngelsizVideoDuzenleyici-Mac-AppleSilicon.dmg
+          draft: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
