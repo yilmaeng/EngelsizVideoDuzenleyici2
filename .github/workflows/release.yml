@@ -38,7 +38,7 @@ jobs:
 
   # ==================== MAC BUILD ====================
   build-mac:
-    runs-on: macos-14  # Apple Silicon runner - daha yeni ve stabil
+    runs-on: macos-14
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,126 +49,31 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Setup Python (native modüller için)
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
       - name: Install dependencies
-        run: |
-          npm ci
-          echo "Node modules installed successfully"
+        run: npm ci
 
-      - name: Debug - Show system info
-        run: |
-          echo "=== System Info ==="
-          uname -a
-          node --version
-          npm --version
-          echo "=== Xcode version ==="
-          xcodebuild -version || true
-          
-      - name: Build Mac (Intel + Apple Silicon)
-        run: |
-          echo "Starting Mac build..."
-          npm run build:mac 2>&1 | tee build_output.log
-          BUILD_EXIT_CODE=${PIPESTATUS[0]}
-          
-          if [ $BUILD_EXIT_CODE -ne 0 ]; then
-            echo "::error::Build failed with exit code $BUILD_EXIT_CODE"
-            cat build_output.log
-            exit $BUILD_EXIT_CODE
-          fi
-          
-          echo "Build completed successfully"
-          
-      - name: Debug - Show build output structure
-        run: |
-          echo "=== dist folder structure ==="
-          ls -la dist/ || echo "No dist folder"
-          
-          if [ -d "dist/mac" ]; then
-            echo "=== mac (x64) folder ==="
-            ls -la "dist/mac/"
-            echo "=== App contents ==="
-            ls -la "dist/mac/Engelsiz Video Düzenleyicisi.app/Contents/" || true
-            echo "=== Frameworks ==="
-            ls -la "dist/mac/Engelsiz Video Düzenleyicisi.app/Contents/Frameworks/" || true
-          fi
-          
-          if [ -d "dist/mac-arm64" ]; then
-            echo "=== mac-arm64 folder ==="
-            ls -la "dist/mac-arm64/"
-            echo "=== App contents ==="
-            ls -la "dist/mac-arm64/Engelsiz Video Düzenleyicisi.app/Contents/" || true
-          fi
+      - name: Build Mac
+        run: npm run build:mac
+        continue-on-error: false
 
-      - name: Fix permissions and remove quarantine (x64)
+      - name: Show build output
+        if: always()
         run: |
-          if [ -d "dist/mac" ]; then
-            echo "Fixing x64 build..."
-            APP_PATH="dist/mac/Engelsiz Video Düzenleyicisi.app"
-            
-            # Quarantine kaldır
-            xattr -cr "$APP_PATH"
-            
-            # Çalıştırılabilir dosyalara execute izni ver
-            chmod +x "$APP_PATH/Contents/MacOS/Engelsiz Video Düzenleyicisi" || true
-            find "$APP_PATH/Contents/Frameworks" -name "*.dylib" -exec chmod +x {} \; 2>/dev/null || true
-            find "$APP_PATH/Contents/Frameworks" -type f -perm +0111 -exec chmod +x {} \; 2>/dev/null || true
-            
-            # Ad-hoc signing (development build için)
-            echo "Ad-hoc signing x64..."
-            codesign --force --deep --sign - "$APP_PATH" 2>&1 || echo "Signing warning (non-fatal)"
-            
-            # Verify
-            echo "Verifying x64 build..."
-            codesign -vvv "$APP_PATH" 2>&1 || echo "Verification warning (expected for ad-hoc)"
-          fi
+          echo "=== dist folder ==="
+          ls -la dist/ 2>/dev/null || echo "No dist folder"
+          echo "=== DMG files ==="
+          ls -la dist/*.dmg 2>/dev/null || echo "No DMG files"
 
-      - name: Fix permissions and remove quarantine (arm64)
-        run: |
-          if [ -d "dist/mac-arm64" ]; then
-            echo "Fixing arm64 build..."
-            APP_PATH="dist/mac-arm64/Engelsiz Video Düzenleyicisi.app"
-            
-            # Quarantine kaldır
-            xattr -cr "$APP_PATH"
-            
-            # Çalıştırılabilir dosyalara execute izni ver
-            chmod +x "$APP_PATH/Contents/MacOS/Engelsiz Video Düzenleyicisi" || true
-            find "$APP_PATH/Contents/Frameworks" -name "*.dylib" -exec chmod +x {} \; 2>/dev/null || true
-            find "$APP_PATH/Contents/Frameworks" -type f -perm +0111 -exec chmod +x {} \; 2>/dev/null || true
-            
-            # Ad-hoc signing
-            echo "Ad-hoc signing arm64..."
-            codesign --force --deep --sign - "$APP_PATH" 2>&1 || echo "Signing warning (non-fatal)"
-            
-            # Verify
-            echo "Verifying arm64 build..."
-            codesign -vvv "$APP_PATH" 2>&1 || echo "Verification warning (expected for ad-hoc)"
-          fi
-
-      - name: List DMG outputs
-        run: |
-          echo "=== DMG files in dist ==="
-          ls -lah dist/*.dmg 2>/dev/null || echo "No DMG files found"
-          echo "=== All dist contents ==="
-          ls -lah dist/ 2>/dev/null || echo "No dist folder"
-
-      - name: Upload Mac x64 DMG
+      - name: Upload Mac Intel DMG
         uses: actions/upload-artifact@v4
         with:
-          name: mac-x64-dmg
-          path: dist/*x64*.dmg
-          retention-days: 30
-          if-no-files-found: warn
-
-      - name: Upload Mac ARM64 DMG
-        uses: actions/upload-artifact@v4
-        with:
-          name: mac-arm64-dmg
-          path: dist/*arm64*.dmg
+          name: mac-intel-dmg
+          path: dist/Engelsiz*.dmg
           retention-days: 30
           if-no-files-found: warn
 
@@ -216,7 +121,7 @@ jobs:
         run: |
           mkdir -p release_files
           
-          # Windows (klasör olarak indiği için zip'le)
+          # Windows
           if [ -d "artifacts/windows-build" ]; then
              cd artifacts
              zip -r ../release_files/EngelsizVideoDuzenleyici-Windows.zip windows-build/
@@ -224,17 +129,8 @@ jobs:
           fi
           
           # Mac DMG dosyaları
-          echo "Looking for Mac DMG files..."
-          find artifacts -name "*.dmg" -type f
-          
-          # x64 DMG
-          if [ -d "artifacts/mac-x64-dmg" ]; then
-             cp artifacts/mac-x64-dmg/*.dmg release_files/EngelsizVideoDuzenleyici-Mac-Intel.dmg 2>/dev/null || true
-          fi
-          
-          # arm64 DMG
-          if [ -d "artifacts/mac-arm64-dmg" ]; then
-             cp artifacts/mac-arm64-dmg/*.dmg release_files/EngelsizVideoDuzenleyici-Mac-AppleSilicon.dmg 2>/dev/null || true
+          if [ -d "artifacts/mac-intel-dmg" ]; then
+             cp artifacts/mac-intel-dmg/*.dmg release_files/ 2>/dev/null || true
           fi
           
           echo "Release files:"
@@ -243,10 +139,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            release_files/EngelsizVideoDuzenleyici-Windows.zip
-            release_files/EngelsizVideoDuzenleyici-Mac-Intel.dmg
-            release_files/EngelsizVideoDuzenleyici-Mac-AppleSilicon.dmg
+          files: release_files/*
           draft: true
           generate_release_notes: true
         env:
