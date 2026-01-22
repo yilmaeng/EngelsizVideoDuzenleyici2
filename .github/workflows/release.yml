@@ -1,146 +1,74 @@
-name: Build All Platforms
+name: Production Release (DMG)
 
 on:
-  # Manuel tetikleme (GitHub Actions sayfasından)
   workflow_dispatch:
-  
-  # Tag oluşturulduğunda (release için)
   push:
     tags:
       - 'v*'
 
 jobs:
-  # ==================== WINDOWS BUILD ====================
-  build-windows:
+  build-win:
     runs-on: windows-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Windows
-        run: npm run build:win
-
-      - name: Upload Windows Artifact
-        uses: actions/upload-artifact@v4
+      - run: npm ci
+      - run: npm run build:win
+      - uses: actions/upload-artifact@v4
         with:
           name: windows-build
           path: dist/win-unpacked/
-          retention-days: 30
+          retention-days: 5
 
-  # ==================== MAC BUILD ====================
   build-mac:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+          
+      - run: npm ci
       
-      - name: Install dependencies
-        run: npm ci
+      # Build DMGs (x64 and arm64)
+      # package.json is configured to build 'dmg' now
+      - run: npx electron-builder install-app-deps
+      - run: npm run build:mac
 
-      - name: Build Mac
-        run: npm run build:mac
-        continue-on-error: false
-
-      - name: Show build output
-        if: always()
-        run: |
-          echo "=== dist folder ==="
-          ls -la dist/ 2>/dev/null || echo "No dist folder"
-          echo "=== DMG files ==="
-          ls -la dist/*.dmg 2>/dev/null || echo "No DMG files"
-
-      - name: Upload Mac DMG files
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: mac-dmg
-          path: "dist/*.dmg"
-          retention-days: 30
-          if-no-files-found: warn
+          name: mac-dmgs
+          path: dist/*.dmg
+          retention-days: 5
 
-  # ==================== LINUX BUILD (DISABLED) ====================
-  # build-linux:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #
-  #     - name: Install dependencies
-  #       run: npm ci
-  #
-  #     - name: Build Linux
-  #       run: npm run build:linux
-  #
-  #     - name: Upload Linux Artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: linux-build
-  #         path: |
-  #           dist/*.AppImage
-  #           dist/*.deb
-  #         retention-days: 30
-
-  # ==================== RELEASE (Tag olduğunda) ====================
-  create-release:
-    needs: [build-windows, build-mac]
+  publish:
+    needs: [build-win, build-mac]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          path: artifacts/
-
-      - name: Prepare Release Files
-        run: |
-          mkdir -p release_files
-          
-          # Windows
+          path: artifacts
+      
+      - run: |
+          mkdir release
           if [ -d "artifacts/windows-build" ]; then
-             cd artifacts
-             zip -r ../release_files/EngelsizVideoDuzenleyici-Windows.zip windows-build/
-             cd ..
+            cd artifacts
+            zip -r ../release/EngelsizVideoDuzenleyici-Windows.zip windows-build/
+            cd ..
           fi
           
-          # Mac DMG dosyaları
-          if [ -d "artifacts/mac-dmg" ]; then
-             cp artifacts/mac-dmg/*.dmg release_files/ 2>/dev/null || true
+          # Move DMGs to release folder
+          if [ -d "artifacts/mac-dmgs" ]; then
+             cp artifacts/mac-dmgs/*.dmg release/
           fi
           
-          echo "Release files:"
-          ls -la release_files/
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v1
         with:
-          files: release_files/*
+          files: release/*
           draft: true
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
