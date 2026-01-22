@@ -70,6 +70,9 @@
     },
     "files": [
       "src/**/*",
+      "Start_icon.png",
+      "Geçiş Sesleri/**/*",
+      "Animation Sounds/**/*",
       "!src/test/**/*",
       "!**/*.md",
       "!**/*.map",
@@ -90,8 +93,7 @@
       "node_modules/sharp/**/*",
       "node_modules/say/**/*",
       "node_modules/@xenova/**/*"
-    ],
-    "publish": null
+    ]
   },
   "keywords": [
     "video-editor",
