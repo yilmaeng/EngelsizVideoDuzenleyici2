@@ -28,6 +28,7 @@ const App = {
         Dialogs.init();
         Keyboard.init();
         TabManager.init();
+        StatusBar.init();
 
         // VideoPlayer hata callback'lerini ayarla
         // NOT: Artık smartOpenVideo kullanıldığı için, dosya açma aşamasında
@@ -53,6 +54,12 @@ const App = {
             if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'o') {
                 e.preventDefault();
                 this.loadProject();
+            }
+            // Ctrl+S: Güvenli Kaydet (Doğrudan Çağrı)
+            if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                console.log('Ctrl+S Manual Trigger');
+                this.saveFile();
             }
             // NOT: Ctrl+Shift+S (Videoyu Farklı Kaydet) menü tarafından handle ediliyor
         });
@@ -263,6 +270,11 @@ const App = {
         // FFmpeg ilerleme
         window.api.onFfmpegProgress((data) => {
             this.updateProgress(data.operation, data.percent);
+        });
+
+        // FFmpeg Log
+        window.api.onFfmpegLog((message) => {
+            StatusBar.log(message);
         });
 
         // Uygulama hazır
@@ -879,7 +891,12 @@ const App = {
     /**
      * Dosya kaydet (Timeline segment'lerini dışa aktar)
      */
+    /**
+     * Dosya kaydet (Timeline segment'lerini dışa aktar)
+     */
     async saveFile() {
+        Accessibility.announce('Debug: Kaydetme komutu alındı.'); // DEBUG
+
         // Yeni proje veya segment varsa kaydet
         if (Timeline.segments.length === 0) {
             Accessibility.alert('Kaydedilecek içerik yok');
@@ -917,6 +934,8 @@ const App = {
             ? CtaOverlayPreview.getOverlayCount()
             : 0;
 
+        Accessibility.announce(`Debug: Değişiklik kontrolü - Timeline: ${Timeline.hasChanges}, Overlay: ${ctaCount}`); // DEBUG
+
         if (!Timeline.hasChanges && ctaCount === 0) {
             Accessibility.announce('Değişiklik yok, kaydetme atlandı');
             return;
@@ -925,7 +944,7 @@ const App = {
         // Orijinal dosyanın üzerine yazma - önce farklı bir dosyaya kaydet
         const outputPath = this.originalFilePath.replace(/\.([^.]+)$/, '_saved.$1');
         await this.exportTimeline(outputPath);
-    },
+    }
 
     /**
      * Farklı kaydet
@@ -947,7 +966,7 @@ const App = {
         }
 
         await this.exportTimeline(filePath);
-    },
+    }
 
     /**
      * Timeline segment'lerini video olarak dışa aktar
@@ -955,6 +974,7 @@ const App = {
      * @param {string} outputPath - Çıktı dosya yolu
      */
     async exportTimeline(outputPath) {
+        await Accessibility.alert("Kritik Kontrol: exportTimeline fonksiyonu çalıştı.");
         const segments = Timeline.getSegments();
 
         if (segments.length === 0) {
@@ -970,6 +990,42 @@ const App = {
             const ctaCount = typeof CtaOverlayPreview !== 'undefined'
                 ? CtaOverlayPreview.getOverlayCount()
                 : 0;
+
+            let safeRenderMode = false;
+            const meta = VideoPlayer.metadata || { width: 0, height: 0 };
+
+            // DEBUG: Kritik Bilgiler - ALERT kullanarak kesin bilgi alalım
+            await Accessibility.alert(`Debug Bilgisi:\nOverlay Sayısı: ${ctaCount}\nÇözünürlük: ${meta.width}x${meta.height}\nCtaModule Durumu: ${typeof CtaOverlayPreview}`);
+
+            // Osmo/4K 264 Format Uyarısı
+            if (ctaCount > 0) {
+                // const meta = VideoPlayer.metadata; // Already defined above
+
+                // DEBUG: Kullanıcıya durumu bildir
+                // Accessibility.announce(`Safe Render Kontrolü: Çözünürlük ${meta.width}x${meta.height}, Overlay Sayısı: ${ctaCount}`);
+                console.log('Safe Render Check - Meta:', meta, 'CTA Count:', ctaCount);
+
+                // Kullanıcının "4k tarzı" dediği ancak testlerde çıkmadığı durumlar için eşiği düşürüyoruz.
+                // 1280x720 (HD) ve üzeri tüm videolarda güvenli modu önerelim.
+                const isHighRes = meta && (meta.width >= 1200 || meta.height >= 700);
+
+                if (isHighRes) {
+                    this.hideProgress(); // Diyalog öncesi progress gizle
+
+                    const confirmed = await Dialogs.showAccessibleConfirm(
+                        'Güvenli Render Uyarısı',
+                        'Yüksek çözünürlüklü videolarda bindirme (Overlay) işlemi öncesinde, sistem kararlılığı için videonun güvenli formata dönüştürülmesi önerilir. Bu işlem kitlenmeleri önler ancak işlem süresini uzatabilir. Dönüştürme işlemini onaylıyor musunuz?'
+                    );
+
+                    if (confirmed) {
+                        safeRenderMode = true;
+                        Accessibility.announce('Güvenli render modu etkinleştirildi.');
+                    } else {
+                        Accessibility.announce('Standart render ile devam ediliyor.');
+                    }
+                    this.showProgress('Video dışa aktarılıyor');
+                }
+            }
 
             console.log('Export başlıyor. CTA sayısı:', ctaCount);
             console.log('CtaOverlayPreview tanımlı mı?', typeof CtaOverlayPreview !== 'undefined');
@@ -991,72 +1047,32 @@ const App = {
                 return;
             }
 
-            // Her segment için video parçası kes
-            // SMART CUT: Sadece kesim noktalarını re-encode et, geri kalanı stream copy
-            const tempPaths = [];
-            const tempDir = outputPath.replace(/[^/\\]+$/, '');
-            const timestamp = Date.now();
+            // === TEK ÇİZGİ (SINGLE PASS) RENDER ===
+            // Parçalama/birleştirme yerine tüm timeline'ı tek FFmpeg komutuyla render et
+            // Bu yöntem dikiş izleri, tekrarlamalar ve senkron kayması sorunlarını önler
 
-            for (let i = 0; i < segments.length; i++) {
-                const seg = segments[i];
-                const tempPath = `${tempDir}temp_seg${i}_${timestamp}.mp4`;
-                const inputPath = seg.sourceFile || this.originalFilePath;
+            const inputPath = this.originalFilePath || this.currentFilePath;
 
-                Accessibility.announce(`Segment ${i + 1}/${segments.length} işleniyor (Smart Cut)`);
+            // Segment'leri renderTimeline için hazırla (sadece start/end bilgisi yeterli)
+            const renderSegments = segments.map(seg => ({
+                start: seg.start,
+                end: seg.end
+            }));
 
-                // SMART CUT: Sadece kesim noktalarında re-encode yap
-                // 145 dakikalık video için ~30 saniye yerine 1 saat beklemek yerine
-                const result = await window.api.cutVideoSmart({
-                    inputPath: inputPath,
-                    outputPath: tempPath,
-                    startTime: seg.start,
-                    endTime: seg.end,
-                    options: { reencodeMargin: 2 } // Kesim noktası etrafında 2 saniye re-encode
-                });
+            Accessibility.announce('Timeline tek seferde render ediliyor (Single Pass)');
+            console.log('RenderTimeline başlıyor:', { inputPath, segments: renderSegments, outputPath });
 
-                if (result.success) {
-                    tempPaths.push(tempPath);
-                } else {
-                    throw new Error(`Segment ${i} kesilemedi: ${result.error}`);
-                }
+            const renderResult = await window.api.renderTimeline({
+                inputPath: inputPath,
+                segments: renderSegments,
+                outputPath: outputPath
+            });
+
+            if (!renderResult.success) {
+                throw new Error(`Render hatası: ${renderResult.error}`);
             }
 
-
-            // Segment'ler birden fazlaysa birleştir
-            if (tempPaths.length === 1) {
-                // Tek segment - dosyayı taşı
-                await window.api.copyFile(tempPaths[0], outputPath);
-            } else {
-                // Birden fazla segment - hızlı birleştir
-                // (Kesilen parçalar aynı codec'te, stream copy çalışır)
-                Accessibility.announce('Segment\'ler hızlı birleştiriliyor');
-
-                let concatResult = await window.api.concatVideosFast({
-                    inputPaths: tempPaths,
-                    outputPath: outputPath
-                });
-
-                // Hızlı birleştirme başarısız olduysa, normal birleştirmeye düş
-                if (!concatResult.success) {
-                    console.warn('Hızlı birleştirme başarısız, normal birleştirmeye geçiliyor:', concatResult.error);
-                    Accessibility.announce('Normal birleştirme yapılıyor');
-                    concatResult = await window.api.concatVideos({
-                        inputPaths: tempPaths,
-                        outputPath: outputPath
-                    });
-
-                    if (!concatResult.success) {
-                        throw new Error(`Birleştirme hatası: ${concatResult.error}`);
-                    }
-                }
-            }
-
-            // Geçici dosyaları sil
-            if (tempPaths.length > 0) {
-                console.log('Geçici dosyalar siliniyor:', tempPaths);
-                window.api.deleteFiles(tempPaths);
-            }
-
+            // CTA Overlay'leri uygula
             // CTA Overlay'leri uygula
             if (ctaCount > 0) {
                 Accessibility.announce('CTA overlay\'ler ekleniyor');
@@ -2364,6 +2380,7 @@ const App = {
             messageEl.textContent = message + '...';
             bar.value = 0;
             percentEl.textContent = '%0';
+            StatusBar.update(message, 0);
         }
 
         // Klavye kısayollarını devre dışı bırak
@@ -2381,6 +2398,7 @@ const App = {
 
         // Klavye kısayollarını etkinleştir
         Keyboard.setEnabled(true);
+        StatusBar.clear();
     },
 
     /**
@@ -2397,6 +2415,9 @@ const App = {
             bar.value = roundedPercent;
             percentEl.textContent = `%${roundedPercent}`;
         }
+
+        // StatusBar güncelle
+        StatusBar.update(operation, roundedPercent);
 
         // İşlem adını Türkçe'ye çevir
         const operationNames = {

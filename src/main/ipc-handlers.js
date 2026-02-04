@@ -56,6 +56,8 @@ function setupIpcHandlers(mainWindow) {
             } else {
                 await ffmpegHandler.cutVideo(inputPath, outputPath, startTime, endTime, (percent) => {
                     mainWindow.webContents.send('ffmpeg-progress', { operation: 'cut', percent });
+                }, (log) => {
+                    mainWindow.webContents.send('ffmpeg-log', log);
                 });
             }
             return { success: true };
@@ -101,10 +103,26 @@ function setupIpcHandlers(mainWindow) {
             } else {
                 await ffmpegHandler.cutVideoSmart(inputPath, outputPath, startTime, endTime, options || {}, (percent) => {
                     mainWindow.webContents.send('ffmpeg-progress', { operation: 'cut-smart', percent });
+                }, (log) => {
+                    mainWindow.webContents.send('ffmpeg-log', log);
                 });
             }
             return { success: true };
         } catch (error) {
+            return { success: false, error: error.message };
+        }
+    });
+
+    // Timeline'ı tek seferde render et (Filter Complex - Single Pass)
+    // Bu yöntem parçalama/birleştirme hatalarını önler
+    ipcMain.handle('render-timeline', async (event, { inputPath, segments, outputPath }) => {
+        try {
+            await ffmpegHandler.renderTimeline(inputPath, segments, outputPath, (percent) => {
+                mainWindow.webContents.send('ffmpeg-progress', { operation: 'render-timeline', percent });
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('Render timeline hatası:', error);
             return { success: false, error: error.message };
         }
     });
@@ -123,6 +141,8 @@ function setupIpcHandlers(mainWindow) {
             } else {
                 await ffmpegHandler.concatenateVideos(inputPaths, outputPath, (percent) => {
                     mainWindow.webContents.send('ffmpeg-progress', { operation: 'concat', percent });
+                }, (log) => {
+                    mainWindow.webContents.send('ffmpeg-log', log);
                 });
             }
             return { success: true };
@@ -137,6 +157,8 @@ function setupIpcHandlers(mainWindow) {
         try {
             await ffmpegHandler.concatenateVideosFast(inputPaths, outputPath, (percent) => {
                 mainWindow.webContents.send('ffmpeg-progress', { operation: 'concat-fast', percent });
+            }, (log) => {
+                mainWindow.webContents.send('ffmpeg-log', log);
             });
             return { success: true };
         } catch (error) {

@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('api', {
     cutVideo: (params) => ipcRenderer.invoke('cut-video', params),
     cutVideoFast: (params) => ipcRenderer.invoke('cut-video-fast', params),
     cutVideoSmart: (params) => ipcRenderer.invoke('cut-video-smart', params),
+    renderTimeline: (params) => ipcRenderer.invoke('render-timeline', params),
     concatVideos: (params) => ipcRenderer.invoke('concat-videos', params),
     concatVideosFast: (params) => ipcRenderer.invoke('concat-videos-fast', params),
 
@@ -152,6 +153,7 @@ contextBridge.exposeInMainWorld('api', {
     onShowKeyboardManager: (callback) => ipcRenderer.on('show-keyboard-manager', () => callback()),
     onShowHelp: (callback) => ipcRenderer.on('show-help', () => callback()),
     onShowFineTuneDialog: (callback) => ipcRenderer.on('show-fine-tune-dialog', () => callback()),
+    onShowAudioSettingsDialog: (callback) => ipcRenderer.on('show-audio-settings-dialog', () => callback()),
 
     // Uygulama olayları
     setWindowTitle: (title) => ipcRenderer.send('set-window-title', title),

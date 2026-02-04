@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="styles/wizard.css">
   <link rel="stylesheet" href="styles/cta-library.css">
+  <link rel="stylesheet" href="styles/status-bar.css">
 </head>
 
 <body>
@@ -105,6 +106,17 @@
     </div>
 
   </main>
+
+  <!-- Durum Çubuğu (Status Bar) -->
+  <footer id="app-status-bar" role="status" aria-live="polite" aria-atomic="true">
+    <div class="status-left">
+      <span id="status-bar-text">Hazır</span>
+      <span id="status-bar-percent"></span>
+    </div>
+    <div class="status-right">
+      <span id="status-bar-log"></span>
+    </div>
+  </footer>
 
   <!-- Diyaloglar -->
 
@@ -1768,6 +1780,7 @@
   <script src="scripts/keyboard.js"></script>
   <script src="scripts/dialogs.js"></script>
   <script src="scripts/tab-manager.js"></script>
+  <script src="scripts/status-bar.js"></script>
   <script src="scripts/app.js"></script>
   <script src="scripts/cta-library.js"></script>
   <script src="scripts/cta-overlay-preview.js"></script>

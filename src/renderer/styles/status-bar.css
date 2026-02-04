@@ -1,0 +1,65 @@
+
+/* =====================================
+   Durum Çubuğu (Status Bar)
+   ===================================== */
+
+#app-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  font-size: var(--font-size-small);
+  color: var(--text-secondary);
+  z-index: 100;
+  /* Kullanıcı seçimi */
+  user-select: none;
+}
+
+#app-status-bar:focus-within {
+  background-color: var(--bg-tertiary);
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 40%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#status-bar-text {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+#status-bar-percent {
+  color: var(--accent-primary);
+  font-weight: bold;
+}
+
+.status-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  overflow: hidden;
+  padding-left: 20px;
+}
+
+#status-bar-log {
+  font-family: 'Consolas', monospace;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}

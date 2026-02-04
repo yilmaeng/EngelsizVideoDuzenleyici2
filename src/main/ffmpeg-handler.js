@@ -172,9 +172,14 @@ async function detectGpuEncoder() {
  * @param {number} startTime - Başlangıç zamanı
  * @param {number} endTime - Bitiş zamanı
  * @param {Function} onProgress - İlerleme callback
- * @param {Object} options - Ek seçenekler { sampleRate: number }
+ * @param {Function} onLog - Log callback
  */
-async function cutVideo(inputPath, outputPath, startTime, endTime, onProgress, options = {}) {
+async function cutVideo(inputPath, outputPath, startTime, endTime, onProgress, options = {}, onLog = null) {
+    // Argument shifting: If options is function, it's onLog
+    if (typeof options === 'function') {
+        onLog = options;
+        options = {};
+    }
     const duration = endTime - startTime;
 
     // GPU encoder tespit et
@@ -232,6 +237,30 @@ async function cutVideo(inputPath, outputPath, startTime, endTime, onProgress, o
 
     console.log(`Video kesme: ${videoCodec} kullanılıyor (GPU: ${gpuEncoder ? 'EVET' : 'HAYIR'})`);
 
+    // Output seeking for precision (forces decoding)
+    // -ss ve -t output options olarak verildiğinde frame-exact kesim yapar.
+    // Ancak çok yavaştır. Input seeking (-ss inputtan önce) + Output seeking kombinasyonu en iyisidir.
+    // ffmpeg-fluent setStartTime input'a ekler.
+
+    // Strateji: Input seeking ile yakınına git, sonra output seeking ile ince ayar yap?
+    // Fluent ffmpeg bunu otomatik yapmayabilir.
+    // Basit çözüm: Re-encode yapıyoruz, yani input seeking yeterince hassas olmalı çünkü decoder çalışıyor.
+    // "1 sn tekrar" sorunu genelde "Copy" modunda olur. CutVideo re-encode yapıyor.
+    // Eğer tekrar varsa, duration hesabı yanlıştır veya safe mode concat sorunu vardır.
+
+    // Hızlandırma: Preset -> ultrafast
+
+    // CPU options update
+    if (!gpuEncoder) {
+        outputOptions = [
+            '-preset', 'ultrafast',  // HIZLI OLMASI İÇİN
+            '-crf', '28', // Biraz kalite düşebilir ama hız artar
+            '-ar', String(sampleRate),
+            '-ac', '2',
+            '-avoid_negative_ts', 'make_zero'
+        ];
+    }
+
     return new Promise((resolve, reject) => {
         ffmpeg(inputPath)
             .setStartTime(startTime)
@@ -247,12 +276,15 @@ async function cutVideo(inputPath, outputPath, startTime, endTime, onProgress, o
             .on('progress', (progress) => {
                 if (onProgress) onProgress(progress.percent);
             })
+            .on('stderr', (line) => {
+                if (onLog) onLog(line);
+            })
             .on('end', () => resolve(outputPath))
             .on('error', (err) => {
                 // GPU encoding başarısız olursa CPU'ya fallback
                 if (gpuEncoder) {
                     console.warn('GPU encoding başarısız, CPU ile deneniyor:', err.message);
-                    cutVideoWithCpu(inputPath, outputPath, startTime, endTime, onProgress, options)
+                    cutVideoWithCpu(inputPath, outputPath, startTime, endTime, onProgress, options, onLog)
                         .then(resolve)
                         .catch(reject);
                 } else {
@@ -266,7 +298,7 @@ async function cutVideo(inputPath, outputPath, startTime, endTime, onProgress, o
 /**
  * CPU ile video kesme (fallback)
  */
-function cutVideoWithCpu(inputPath, outputPath, startTime, endTime, onProgress, options = {}) {
+function cutVideoWithCpu(inputPath, outputPath, startTime, endTime, onProgress, options = {}, onLog = null) {
     const duration = endTime - startTime;
     const sampleRate = options.sampleRate || 44100;
     return new Promise((resolve, reject) => {
@@ -280,8 +312,8 @@ function cutVideoWithCpu(inputPath, outputPath, startTime, endTime, onProgress, 
                 `afade=t=out:st=${Math.max(0, duration - 0.01)}:d=0.01`
             ])
             .outputOptions([
-                '-preset', 'veryfast',
-                '-crf', '23',
+                '-preset', 'ultrafast', // Fallback'te de hızlı olsun
+                '-crf', '28',
                 '-ar', String(sampleRate),
                 '-ac', '2',
                 '-avoid_negative_ts', 'make_zero'
@@ -289,6 +321,9 @@ function cutVideoWithCpu(inputPath, outputPath, startTime, endTime, onProgress, 
             .output(outputPath)
             .on('progress', (progress) => {
                 if (onProgress) onProgress(progress.percent);
+            })
+            .on('stderr', (line) => {
+                if (onLog) onLog(line);
             })
             .on('end', () => resolve(outputPath))
             .on('error', reject)
@@ -358,7 +393,7 @@ function cutVideoFast(inputPath, outputPath, startTime, endTime, onProgress) {
  * PRECISE SMART CUT
  * Kesin Keyframe Tespiti ile Hatasız Kesim
  */
-async function cutVideoSmart(inputPath, outputPath, startTime, endTime, options = {}, onProgress) {
+async function cutVideoSmart(inputPath, outputPath, startTime, endTime, options = {}, onProgress, onLog = null) {
     const fs = require('fs');
     const duration = endTime - startTime;
 
@@ -413,61 +448,60 @@ async function cutVideoSmart(inputPath, outputPath, startTime, endTime, options 
         // Eğer keyframeTime ile startTime çok yakınsa (0.1sn), P1'e gerek yok
         if (keyframeTime - startTime > 0.1) {
             console.log(`Smart Cut P1: ${startTime} -> ${keyframeTime} (Re-encode)`);
-            await cutVideo(inputPath, part1Path, startTime, keyframeTime, (p) => {
-                if (onProgress) onProgress(p * 0.15);
-            }, encodeOptions);
-            tempFiles.push(part1Path);
-        }
+            if (onProgress) onProgress(p * 0.15);
+        }, encodeOptions, onLog);
+        tempFiles.push(part1Path);
+    }
 
         // --- PART 2: ORTA (Stream Copy) ---
         // keyframeTime'dan targetPart2End'e kadar.
         // Copy olduğu için start (keyframeTime) tam oturacak.
         const part2Duration = targetPart2End - keyframeTime;
-        const part2Path = path.join(tempDir, `sc_p2_${timestamp}.mp4`);
-        console.log(`Smart Cut P2: ${keyframeTime} -> ${targetPart2End} (Copy, ${part2Duration.toFixed(2)}s)`);
+    const part2Path = path.join(tempDir, `sc_p2_${timestamp}.mp4`);
+    console.log(`Smart Cut P2: ${keyframeTime} -> ${targetPart2End} (Copy, ${part2Duration.toFixed(2)}s)`);
 
-        await new Promise((resolve, reject) => {
-            ffmpeg(inputPath)
-                .inputOptions([`-ss ${keyframeTime}`]) // Keyframe'e tam seek yapar (çünkü keyframe zamanını veriyoruz)
-                .inputOptions([`-t ${part2Duration}`]) // Süre kadar al
-                .videoCodec('copy')
-                .audioCodec('copy')
-                .output(part2Path)
-                .on('end', resolve)
-                .on('error', reject)
-                .run();
-        });
-        tempFiles.push(part2Path);
+    await new Promise((resolve, reject) => {
+        ffmpeg(inputPath)
+            .inputOptions([`-ss ${keyframeTime}`]) // Keyframe'e tam seek yapar (çünkü keyframe zamanını veriyoruz)
+            .inputOptions([`-t ${part2Duration}`]) // Süre kadar al
+            .videoCodec('copy')
+            .audioCodec('copy')
+            .output(part2Path)
+            .on('end', resolve)
+            .on('error', reject)
+            .run();
+    });
+    tempFiles.push(part2Path);
 
-        // --- PART 3: BİTİŞ (Re-encode) ---
-        // targetPart2End'den endTime'a kadar.
-        // P2 şurada bitti: keyframeTime + part2Duration = targetPart2End.
-        // Yani P3 tam buradan başlamalı.
-        const part3Path = path.join(tempDir, `sc_p3_${timestamp}.mp4`);
-        if (endTime - targetPart2End > 0.1) {
-            console.log(`Smart Cut P3: ${targetPart2End} -> ${endTime} (Re-encode)`);
-            await cutVideo(inputPath, part3Path, targetPart2End, endTime, (p) => {
-                if (onProgress) onProgress(80 + p * 0.15);
-            }, encodeOptions);
-            tempFiles.push(part3Path);
-        }
-
-        // --- BİRLEŞTİRME ---
-        console.log(`Smart Cut: ${tempFiles.length} parça birleştiriliyor...`);
-        await concatenateVideosFast(tempFiles, outputPath, (p) => {
-            if (onProgress) onProgress(95 + p * 0.05);
-        });
-
-        // Temizlik
-        tempFiles.forEach(f => { try { fs.unlinkSync(f); } catch (e) { } });
-        return outputPath;
-
-    } catch (error) {
-        console.error('Smart Cut hatası:', error.message);
-        tempFiles.forEach(f => { try { fs.unlinkSync(f); } catch (e) { } });
-        // Fallback
-        return cutVideo(inputPath, outputPath, startTime, endTime, onProgress);
+    // --- PART 3: BİTİŞ (Re-encode) ---
+    // targetPart2End'den endTime'a kadar.
+    // P2 şurada bitti: keyframeTime + part2Duration = targetPart2End.
+    // Yani P3 tam buradan başlamalı.
+    const part3Path = path.join(tempDir, `sc_p3_${timestamp}.mp4`);
+    if (endTime - targetPart2End > 0.1) {
+        console.log(`Smart Cut P3: ${targetPart2End} -> ${endTime} (Re-encode)`);
+        await cutVideo(inputPath, part3Path, targetPart2End, endTime, (p) => {
+            if (onProgress) onProgress(80 + p * 0.15);
+        }, encodeOptions, onLog);
+        tempFiles.push(part3Path);
     }
+
+    // --- BİRLEŞTİRME ---
+    console.log(`Smart Cut: ${tempFiles.length} parça birleştiriliyor...`);
+    await concatenateVideosFast(tempFiles, outputPath, (p) => {
+        if (onProgress) onProgress(95 + p * 0.05);
+    });
+
+    // Temizlik
+    tempFiles.forEach(f => { try { fs.unlinkSync(f); } catch (e) { } });
+    return outputPath;
+
+} catch (error) {
+    console.error('Smart Cut hatası:', error.message);
+    tempFiles.forEach(f => { try { fs.unlinkSync(f); } catch (e) { } });
+    // Fallback
+    return cutVideo(inputPath, outputPath, startTime, endTime, onProgress);
+}
 }
 
 /**
@@ -613,7 +647,7 @@ async function smartCutEnd(inputPath, outputPath, startTime, endTime, margin, on
  * Videoları birleştir (farklı özellikleri normalize ederek)
  * Tüm videoları aynı çözünürlük, fps, codec'e dönüştürüp birleştirir
  */
-function concatenateVideos(inputPaths, outputPath, onProgress) {
+function concatenateVideos(inputPaths, outputPath, onProgress, onLog = null) {
     return new Promise(async (resolve, reject) => {
         try {
             const fs = require('fs');
@@ -642,22 +676,42 @@ function concatenateVideos(inputPaths, outputPath, onProgress) {
             // Her videoyu normalize et
             const normalizedPaths = [];
 
+            // GPU encoder tespiti (Daha önce yapılmadıysa)
+            const gpuEncoder = await detectGpuEncoder();
+            const videoCodec = gpuEncoder || 'libx264';
+
+            // Codec options
+            let outputOpts = [];
+            if (gpuEncoder) {
+                if (gpuEncoder.includes('nvenc')) {
+                    outputOpts = ['-preset', 'p2', '-rc', 'vbr', '-cq', '28']; // Hızlı preset
+                } else if (gpuEncoder.includes('qsv')) {
+                    outputOpts = ['-preset', 'veryfast', '-global_quality', '28'];
+                } else if (gpuEncoder.includes('videotoolbox')) {
+                    outputOpts = ['-q:v', '60'];
+                }
+            } else {
+                // CPU
+                outputOpts = ['-preset', 'ultrafast', '-crf', '28'];
+            }
+
+            // Audio & Filter options
+            outputOpts = outputOpts.concat([
+                '-r', String(targetFps),
+                '-vf', `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
+                '-ar', '44100',
+                '-ac', '2'
+            ]);
+
             for (let i = 0; i < inputPaths.length; i++) {
                 const inputPath = inputPaths[i];
                 const normalizedPath = path.join(tempDir, `normalized_${i}_${timestamp}.mp4`);
 
                 await new Promise((res, rej) => {
                     ffmpeg(inputPath)
-                        .videoCodec('libx264')
+                        .videoCodec(videoCodec)
                         .audioCodec('aac')
-                        .outputOptions([
-                            '-preset', 'fast',
-                            '-crf', '23',
-                            '-r', String(targetFps),
-                            '-vf', `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
-                            '-ar', '44100',
-                            '-ac', '2'
-                        ])
+                        .outputOptions(outputOpts)
                         .output(normalizedPath)
                         .on('end', () => {
                             console.log(`Video ${i + 1}/${inputPaths.length} normalize edildi`);
@@ -666,6 +720,9 @@ function concatenateVideos(inputPaths, outputPath, onProgress) {
                         .on('error', (err) => {
                             console.error(`Video ${i + 1} normalize hatası:`, err);
                             rej(err);
+                        })
+                        .on('stderr', (line) => {
+                            if (onLog) onLog(line);
                         })
                         .run();
                 });
@@ -708,6 +765,9 @@ function concatenateVideos(inputPaths, outputPath, onProgress) {
                         res();
                     })
                     .on('error', rej)
+                    .on('stderr', (line) => {
+                        if (onLog) onLog(line);
+                    })
                     .run();
             });
 
@@ -723,7 +783,7 @@ function concatenateVideos(inputPaths, outputPath, onProgress) {
  * Tüm videolar aynı codec ve özelliklerde olmalı
  * Çok hızlı - büyük dosyalar için ideal
  */
-function concatenateVideosFast(inputPaths, outputPath, onProgress) {
+function concatenateVideosFast(inputPaths, outputPath, onProgress, onLog = null) {
     return new Promise(async (resolve, reject) => {
         // --- CHUNKING STRATEGY (Optimization for 50+ segments) ---
         // Çok sayıda (örn: 100+) parçayı tek seferde birleştirmek bellek ve dosya limiti sorunlarına
@@ -825,6 +885,9 @@ function concatenateVideosFast(inputPaths, outputPath, onProgress) {
                         try { fs.unlinkSync(listPath); } catch (e) { }
                         rej(err);
                     })
+                    .on('stderr', (line) => {
+                        if (onLog) onLog(line);
+                    })
                     .run();
             });
 
@@ -833,7 +896,7 @@ function concatenateVideosFast(inputPaths, outputPath, onProgress) {
             console.error('concatenateVideosFast hatası, normal birleştirmeye fallback:', error.message);
             // Hata olursa normal birleştirmeye düş
             try {
-                await concatenateVideos(inputPaths, outputPath, onProgress);
+                await concatenateVideos(inputPaths, outputPath, onProgress, onLog);
                 resolve(outputPath);
             } catch (fallbackError) {
                 reject(fallbackError);
@@ -3364,6 +3427,8 @@ async function addCtaOverlay(params, onProgress) {
                 .outputOptions([
                     '-c:v', videoCodec,
                     '-c:a', 'aac',
+                    '-pix_fmt', 'yuv420p',
+                    '-movflags', '+faststart',
                     ...outputOpts,
                     ...outputMaps
                 ])
