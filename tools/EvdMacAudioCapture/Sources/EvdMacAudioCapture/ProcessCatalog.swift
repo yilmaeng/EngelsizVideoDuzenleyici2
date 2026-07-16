@@ -43,6 +43,20 @@ enum ProcessCatalog {
     }
 
     @available(macOS 14.2, *)
+    static func processObjectIDs(forBundleIDs bundleIDs: [String]) -> [AudioObjectID] {
+        let requested = Set(bundleIDs.filter { !$0.isEmpty })
+        guard !requested.isEmpty else { return [] }
+        return NSWorkspace.shared.runningApplications.compactMap { application in
+            guard let bundleID = application.bundleIdentifier,
+                  requested.contains(bundleID),
+                  !application.isTerminated else {
+                return nil
+            }
+            return try? processObjectID(for: application.processIdentifier)
+        }
+    }
+
+    @available(macOS 14.2, *)
     static func processObjectID(for pid: pid_t) throws -> AudioObjectID {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,

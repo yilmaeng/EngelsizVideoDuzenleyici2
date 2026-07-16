@@ -82,21 +82,27 @@ final class CoreAudioTapCapture {
     }
 
     private func makeTapDescription() throws -> CATapDescription {
-        let description = CATapDescription()
-        var bundleIDs = options.bundleIDs
-        bundleIDs.append(contentsOf: options.excludedBundleIDs)
-        if options.pid > 0, let bundleID = ProcessCatalog.bundleID(for: options.pid), !bundleID.isEmpty {
-            bundleIDs.append(bundleID)
+        let bundleIDs = options.bundleIDs + options.excludedBundleIDs
+        var processIDs = ProcessCatalog.processObjectIDs(forBundleIDs: bundleIDs)
+        if options.pid > 0 {
+            if options.selection == .include {
+                processIDs.append(try ProcessCatalog.processObjectID(for: options.pid))
+            } else if let processID = try? ProcessCatalog.processObjectID(for: options.pid) {
+                processIDs.append(processID)
+            }
         }
-        description.bundleIDs = Array(Set(bundleIDs.filter { !$0.isEmpty })).sorted()
-        if options.pid > 0, ProcessCatalog.bundleID(for: options.pid) == nil {
-            description.processes = [try ProcessCatalog.processObjectID(for: options.pid)]
+        processIDs = Array(Set(processIDs)).sorted()
+
+        let description: CATapDescription
+        if options.selection == .include {
+            guard !processIDs.isEmpty else {
+                throw HelperError.runtime("audio_process_not_found")
+            }
+            description = CATapDescription(stereoMixdownOfProcesses: processIDs)
+        } else {
+            description = CATapDescription(stereoGlobalTapButExcludeProcesses: processIDs)
         }
-        description.isExclusive = options.selection == .exclude || options.selection == .globalOutput
-        description.isMixdown = true
-        description.isMono = false
         description.isPrivate = true
-        description.isProcessRestoreEnabled = true
         description.muteBehavior = .unmuted
         description.name = "EVD Native Audio \(UUID().uuidString)"
         return description
