@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { fork } = require('child_process');
 const ffmpegHandler = require('./ffmpeg-handler');
+const i18n = require('./i18n');
 
 const CONFIG_DIR = path.join(require('os').homedir(), '.korcul-video-editor');
 const MODEL_STATUS_FILE = path.join(CONFIG_DIR, 'ai-model-status.json');
@@ -30,6 +31,94 @@ function setModelDownloaded(downloaded) {
 
 let worker = null;
 let mainWindowRef = null;
+
+function getCurrentAiLocale() {
+    const supported = ['tr', 'en', 'de', 'es', 'fr'];
+    const lang = i18n.currentLocale || 'en';
+    return supported.includes(lang) ? lang : 'en';
+}
+
+function getCurrentAiLanguageName() {
+    const names = { tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French' };
+    return names[getCurrentAiLocale()] || 'English';
+}
+
+function buildObjectAnalysisPrompt(lang) {
+    if (lang === 'tr') {
+        return `
+        Video zaman çizelgesinden 3 kare görüyorsun (Başlangıç, Orta, Bitiş).
+
+        GÖREV: Bu sahnede görünen TÜM nesneleri, kişileri, logoları ve dikkat çeken öğeleri listele.
+        Her nesne için yaklaşık BOUNDING BOX koordinatlarını ver (0-1000 ölçeğinde).
+
+        ÖNEMLİ - ETİKET KURALLARI:
+        - İnsan için: "Yüz" veya "Tam Vücut" olarak belirt (Örn: "Adamın Yüzü", "Kadının Tam Vücudu")
+        - Küçük nesneler için boyut belirt (Örn: "Küçük Telefon", "Büyük Masa")
+        - Etiketleri yalnızca Türkçe yaz
+
+        BOUNDING BOX:
+        - [ymin, xmin, ymax, xmax] formatında (0=üst/sol köşe, 1000=alt/sağ köşe)
+        - Nesnenin gerçek sınırlarını kapsamalı
+
+        Yanıtı SADECE geçerli bir JSON formatında ver.
+
+        JSON Formatı:
+        [
+          {
+            "label": "Adamın Yüzü",
+            "type": "face",
+            "boundingBox": [100, 200, 300, 400],
+            "presentInFrames": [0, 1, 2],
+            "confidence": 0.95
+          },
+          {
+            "label": "Masadaki Telefon",
+            "type": "object",
+            "boundingBox": [600, 700, 650, 780],
+            "presentInFrames": [0, 1],
+            "confidence": 0.80
+          }
+        ]
+        `;
+    }
+
+    const languageName = getCurrentAiLanguageName();
+    return `
+        You are looking at 3 frames from the video timeline (Start, Middle, End).
+
+        TASK: List ALL visible objects, people, logos, and notable items in this scene.
+        For each object, provide approximate BOUNDING BOX coordinates using a 0-1000 scale.
+
+        IMPORTANT - LABEL RULES:
+        - For people, specify whether it is a face or a full body (Example: "man's face", "woman full body")
+        - For small objects, include size/context if useful (Example: "small phone", "large table")
+        - Write labels only in ${languageName}
+
+        BOUNDING BOX:
+        - Use [ymin, xmin, ymax, xmax] format (0 = top/left corner, 1000 = bottom/right corner)
+        - The box should cover the real boundaries of the object
+
+        Return ONLY valid JSON.
+
+        JSON Format:
+        [
+          {
+            "label": "man's face",
+            "type": "face",
+            "boundingBox": [100, 200, 300, 400],
+            "presentInFrames": [0, 1, 2],
+            "confidence": 0.95
+          },
+          {
+            "label": "phone on the table",
+            "type": "object",
+            "boundingBox": [600, 700, 650, 780],
+            "presentInFrames": [0, 1],
+            "confidence": 0.80
+          }
+        ]
+        `;
+}
 
 // Worker Management
 function getWorker() {
@@ -126,7 +215,7 @@ async function analyzeScene(videoPath, startTime, duration, customLabels) {
     // 1. Check API Key
     const apiKey = geminiHandler.getApiKey();
     if (!apiKey) {
-        throw new Error("Yapay Zeka analizi için Gemini API anahtarı gereklidir. Lütfen 'Yapay Zeka -> Gemini API Anahtarı' menüsünden anahtarınızı girin.");
+        throw new Error(i18n.t('runtime.object_analysis.gemini_key_missing') || "Gemini API key is required for AI analysis.");
     }
 
     // 2. Extract Keyframes (e.g. 3 frames: start, middle, end)
@@ -134,7 +223,7 @@ async function analyzeScene(videoPath, startTime, duration, customLabels) {
     const timestamps = [startTime, startTime + (duration / 2), startTime + duration - 0.1];
     const frameBase64s = [];
 
-    if (mainWindowRef) mainWindowRef.webContents.send('analysis-status', 'Kareler hazırlanıyor...');
+    if (mainWindowRef) mainWindowRef.webContents.send('analysis-status', i18n.t('runtime.object_analysis.preparing_frames') || 'Preparing frames...');
 
     const os = require('os');
     const fs = require('fs');
@@ -154,47 +243,13 @@ async function analyzeScene(videoPath, startTime, duration, customLabels) {
             }
         }
 
-        if (frameBase64s.length === 0) throw new Error("Görüntü alınamadı.");
+        if (frameBase64s.length === 0) throw new Error(i18n.t('runtime.object_analysis.frame_capture_failed') || 'Frames could not be captured.');
 
-        if (mainWindowRef) mainWindowRef.webContents.send('analysis-status', 'Yapay zeka sahneyi inceliyor...');
+        if (mainWindowRef) mainWindowRef.webContents.send('analysis-status', i18n.t('runtime.object_analysis.ai_inspecting_scene') || 'AI is inspecting the scene...');
 
         // 3. Ask Gemini
         // Tutarlılık için sıcaklık 0.0, bounding box koordinatları iste
-        const prompt = `
-        Video zaman çizelgesinden 3 kare görüyorsun (Başlangıç, Orta, Bitiş).
-        
-        GÖREV: Bu sahnede görünen TÜM nesneleri, kişileri, logoları ve dikkat çeken öğeleri listele.
-        Her nesne için yaklaşık BOUNDING BOX koordinatlarını ver (0-1000 ölçeğinde).
-        
-        ÖNEMLİ - ETIKET KURALLARI:
-        - İnsan için: "Yüz" veya "Tam Vücut" olarak belirt (Örn: "Adamın Yüzü", "Kadının Tam Vücudu")
-        - Küçük nesneler için boyut belirt (Örn: "Küçük Telefon", "Büyük Masa")
-        - Türkçe etiket kullan
-        
-        BOUNDING BOX:
-        - [ymin, xmin, ymax, xmax] formatında (0=üst/sol köşe, 1000=alt/sağ köşe)
-        - Nesnenin gerçek sınırlarını kapsamalı
-        
-        Yanıtı SADECE geçerli bir JSON formatında ver.
-        
-        JSON Formatı:
-        [
-          { 
-            "label": "Adamın Yüzü", 
-            "type": "face", 
-            "boundingBox": [100, 200, 300, 400],
-            "presentInFrames": [0, 1, 2], 
-            "confidence": 0.95 
-          },
-          { 
-            "label": "Masadaki Telefon", 
-            "type": "object", 
-            "boundingBox": [600, 700, 650, 780],
-            "presentInFrames": [0, 1], 
-            "confidence": 0.80 
-          }
-        ]
-        `;
+        const prompt = buildObjectAnalysisPrompt(getCurrentAiLocale());
 
         // Use vision request
         // geminiHandler fonksiyonları export edilmeli veya ipc üzerinden çağrılmalı. 
@@ -222,12 +277,18 @@ async function analyzeScene(videoPath, startTime, duration, customLabels) {
         }];
 
         // URL construct
-        const model = 'gemini-2.5-flash'; // Hızlı ve iyi
+        const model = geminiHandler.getAiModel ? geminiHandler.getAiModel() : 'gemini-2.5-flash';
         const https = require('https');
 
         const responseText = await new Promise((resolve, reject) => {
             const reqData = JSON.stringify({
                 contents,
+                systemInstruction: {
+                    parts: [{
+                        text: i18n.t('runtime.dialogs.ai_system_instruction_json', { lang: getCurrentAiLanguageName() })
+                            || `Respond only in ${getCurrentAiLanguageName()}. If JSON output is requested, keep all JSON keys and schema exactly as requested while writing any free text values in ${getCurrentAiLanguageName()}.`
+                    }]
+                },
                 generationConfig: { temperature: 0.0, response_mime_type: "application/json" } // Tutarlılık için 0.0
             });
 
@@ -296,7 +357,7 @@ async function analyzeScene(videoPath, startTime, duration, customLabels) {
                 id: idx + 1,
                 label: obj.label,
                 type: obj.type,
-                position: obj.position || 'Belirsiz',
+                position: obj.position || (i18n.t('runtime.object_analysis.position_unknown') || 'Unknown'),
                 startTime: startTime + (obj.presentInFrames && obj.presentInFrames.includes(0) ? 0 : (duration / 2)),
                 endTime: startTime + (duration),
                 score: obj.confidence || 0.9,
@@ -314,7 +375,7 @@ async function analyzeScene(videoPath, startTime, duration, customLabels) {
     }
 }
 
-async function applyEffect(videoPath, outputPath, objectTrack, effectType, scope, customStart, customEnd) {
+async function applyEffect(event, videoPath, outputPath, objectTrack, effectType, scope, customStart, customEnd) {
     // scope: 'track', 'full', 'custom'
     console.log('=== applyEffect çağrıldı ===');
     console.log('Scope:', scope, 'Custom:', customStart, '-', customEnd);
@@ -402,6 +463,11 @@ async function applyEffect(videoPath, outputPath, objectTrack, effectType, scope
                     console.log('FFmpeg stderr:', stderrLine);
                 }
             })
+            .on('progress', (progress) => {
+                if (event && event.sender) {
+                    event.sender.send('ffmpeg-progress', progress);
+                }
+            })
             .on('end', () => {
                 console.log('FFmpeg tamamlandı! Çıktı:', outputPath);
                 resolve();
@@ -416,14 +482,14 @@ async function applyEffect(videoPath, outputPath, objectTrack, effectType, scope
 }
 
 // Çoklu nesne desteği için yeni fonksiyon
-async function applyEffectMultiple(videoPath, outputPath, objectTracks, effectType, scope, customStart, customEnd) {
+async function applyEffectMultiple(event, videoPath, outputPath, objectTracks, effectType, scope, customStart, customEnd) {
     if (!objectTracks || objectTracks.length === 0) {
         throw new Error('Hiç nesne seçilmedi');
     }
 
     // Tek nesne ise eski fonksiyonu kullan
     if (objectTracks.length === 1) {
-        return applyEffect(videoPath, outputPath, objectTracks[0], effectType, scope, customStart, customEnd);
+        return applyEffect(event, videoPath, outputPath, objectTracks[0], effectType, scope, customStart, customEnd);
     }
 
     // Video metadata al
@@ -432,15 +498,82 @@ async function applyEffectMultiple(videoPath, outputPath, objectTracks, effectTy
     const height = videoMeta.height || 1080;
     const videoDuration = videoMeta.duration || 3600;
 
-    // Her nesne için filter string oluştur
-    const filters = objectTracks.map((track, index) => {
+    // Her nesnenin sınırlarını çıkar
+    const tracksWithBoxes = objectTracks.map(track => {
         const boxes = track.boxes.sort((a, b) => a.time - b.time);
         const box = boxes.length > 0 ? boxes[0].box : { xmin: width * 0.25, ymin: height * 0.25, xmax: width * 0.75, ymax: height * 0.75 };
+        return { track, box };
+    });
 
-        const x = Math.round(box.xmin);
-        const y = Math.round(box.ymin);
-        const w = Math.round(box.xmax - box.xmin);
-        const h = Math.round(box.ymax - box.ymin);
+    // GRUPLAMA (CLUSTERING) ALGORİTMASI
+    // Kullanıcının sorusuna yönelik Akıllı Kümeleme:
+    // Eğer parçalar birbirine yakınsa VEYA kesişiyorsa -> Tek bir büyük dikdörtgende birleştir (Logonun 3 parçaya bölünmesi vs.)
+    // Eğer parçalar birbirinden çok uzaktaysa (biri sağ üst köşede, diğeri sol altta) -> Ayrı ayrı dikdörtgenler çiz
+    let clusters = [];
+
+    // Yakınlık eşikleri: Ekranın genişliğinin veya yüksekliğinin belirli bir yüzdesine kadar yakın olanları kaynaştır.
+    const thresholdX = width * 0.05; // Yaklaşık %5'lik bir yatay mesafe eşiği
+    const thresholdY = height * 0.05; // Yaklaşık %5'lik bir dikey mesafe eşiği
+
+    for (const item of tracksWithBoxes) {
+        let merged = false;
+
+        for (let cluster of clusters) {
+            const cBox = cluster.box;
+
+            // Kesişmeyen boşluk mesafesini koordinatlarla hesapla
+            const xDist = Math.max(0, Math.max(cBox.xmin, item.box.xmin) - Math.min(cBox.xmax, item.box.xmax));
+            const yDist = Math.max(0, Math.max(cBox.ymin, item.box.ymin) - Math.min(cBox.ymax, item.box.ymax));
+
+            // Eğer parçalar kesişiyorsa, iç içeyse VEYA eşikten daha yakınsalar birleştir
+            if (xDist <= thresholdX && yDist <= thresholdY) {
+                // Kapsayıcı (genişletilmiş) kutuyu hesapla
+                cluster.box.xmin = Math.min(cBox.xmin, item.box.xmin);
+                cluster.box.ymin = Math.min(cBox.ymin, item.box.ymin);
+                cluster.box.xmax = Math.max(cBox.xmax, item.box.xmax);
+                cluster.box.ymax = Math.max(cBox.ymax, item.box.ymax);
+
+                // Zaman aralığını birleştir (en erken başlangıç ve en geç bitişi kapsa)
+                cluster.startTime = Math.min(cluster.startTime, item.track.startTime);
+                cluster.endTime = Math.max(cluster.endTime, item.track.endTime);
+
+                cluster.tracks.push(item.track);
+                merged = true;
+                break;
+            }
+        }
+
+        if (!merged) {
+            // Hiçbir kümeye dahil olamayacak kadar uzaktaysa kendi bağımsız kümesini oluştur (örneğin diğer köşedeki ayrı bir logo)
+            clusters.push({
+                box: { ...item.box },
+                startTime: item.track.startTime,
+                endTime: item.track.endTime,
+                tracks: [item.track]
+            });
+        }
+    }
+
+    // Oluşan kümelere göre FFmpeg Box filtrelerini hazırla
+    const filters = clusters.map((cluster, index) => {
+        const box = cluster.box;
+
+        // GÜVENLİK PAYI (PADDING): Etraftan çok hafif taşma veriyoruz ki logoların açıkta ve gölgede kalan yerleri tam dolsun.
+        const paddingX = Math.round(width * 0.02); // %2 genişletme
+        const paddingY = Math.round(height * 0.02); // %2 genişletme
+
+        const xRaw = Math.round(box.xmin) - paddingX;
+        const yRaw = Math.round(box.ymin) - paddingY;
+
+        const x = Math.max(0, xRaw);
+        const y = Math.max(0, yRaw);
+
+        let w = Math.round(box.xmax - box.xmin) + (paddingX * 2);
+        let h = Math.round(box.ymax - box.ymin) + (paddingY * 2);
+
+        // Ekran dışına taşmayı engelle
+        if (x + w > width) w = width - x;
+        if (y + h > height) h = height - y;
 
         let tStart, tEnd;
         if (scope === 'full') {
@@ -450,8 +583,8 @@ async function applyEffectMultiple(videoPath, outputPath, objectTracks, effectTy
             tStart = customStart;
             tEnd = customEnd;
         } else {
-            tStart = track.startTime;
-            tEnd = track.endTime;
+            tStart = cluster.startTime;
+            tEnd = cluster.endTime;
         }
 
         let color;
@@ -468,8 +601,8 @@ async function applyEffectMultiple(videoPath, outputPath, objectTracks, effectTy
     // Tüm filtreleri birleştir
     const filterStr = filters.join(',');
 
-    console.log('=== ÇOKLU EFEKT BİLGİLERİ ===');
-    console.log('Nesne Sayısı:', objectTracks.length);
+    console.log('=== KÜMELENMİŞ ÇOKLU EFEKT BİLGİLERİ ===');
+    console.log(`İlk Seçilen Nesne Sayısı: ${objectTracks.length}, Daraltılmış Nihai Kutu Sayısı: ${clusters.length}`);
     console.log('Filter String:', filterStr);
 
     return new Promise((resolve, reject) => {
@@ -488,6 +621,11 @@ async function applyEffectMultiple(videoPath, outputPath, objectTracks, effectTy
             .on('stderr', (stderrLine) => {
                 if (stderrLine.includes('Error') || stderrLine.includes('error')) {
                     console.log('FFmpeg stderr:', stderrLine);
+                }
+            })
+            .on('progress', (progress) => {
+                if (event && event.sender) {
+                    event.sender.send('ffmpeg-progress', progress);
                 }
             })
             .on('end', () => {
@@ -527,7 +665,7 @@ function setupObjectAnalysisHandlers(window) {
             const tracks = objectTracks || [objectTrack];
 
             const tempOut = path.join(require('os').tmpdir(), `effect_${Date.now()}.mp4`);
-            await applyEffectMultiple(videoPath, tempOut, tracks, effectType, scope, customStart, customEnd);
+            await applyEffectMultiple(event, videoPath, tempOut, tracks, effectType, scope, customStart, customEnd);
             return { success: true, outputPath: tempOut };
         } catch (error) {
             return { success: false, error: error.message };

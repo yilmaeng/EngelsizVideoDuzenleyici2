@@ -1,0 +1,95 @@
+.instant-voice-translation-page {
+  overflow: auto;
+}
+
+.instant-shell {
+  width: min(980px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
+.instant-hero {
+  padding: 28px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--panel-radius);
+  background:
+    linear-gradient(135deg, rgba(79, 176, 198, 0.18), rgba(255, 122, 89, 0.1)),
+    rgba(19, 38, 58, 0.78);
+  box-shadow: var(--shadow-soft);
+}
+
+.instant-kicker {
+  color: var(--accent-primary);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.instant-hero h1 {
+  margin: 8px 0 10px;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 1.05;
+}
+
+.instant-intro {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-left: 4px solid var(--accent-primary);
+  border-radius: 12px;
+  background: rgba(255, 122, 89, 0.1);
+}
+
+.instant-card {
+  margin-top: 16px;
+  padding: 22px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--panel-radius);
+  background: var(--bg-elevated);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.2);
+}
+
+.instant-card-heading {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.instant-api-panel {
+  margin-top: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.instant-shell input,
+.instant-shell select,
+.instant-shell textarea {
+  width: 100%;
+}
+
+.instant-shell textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .instant-shell {
+    width: min(100% - 20px, 980px);
+    padding: 18px 0 32px;
+  }
+
+  .instant-hero,
+  .instant-card {
+    padding: 18px;
+  }
+}

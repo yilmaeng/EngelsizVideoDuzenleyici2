@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Anlık Sesli Çeviri, konuşmaları gerçek zamanlı çevirmek için mikrofon erişimine ihtiyaç duyar.";
+"NSAudioCaptureUsageDescription" = "Anlık Sesli Çeviri, bilgisayar ve uygulama sesini gerçek zamanlı çevirmek için sistem sesi kaydı erişimine ihtiyaç duyar.";

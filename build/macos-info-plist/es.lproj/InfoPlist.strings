@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "La traducción de voz instantánea necesita acceso al micrófono para traducir conversaciones en tiempo real.";
+"NSAudioCaptureUsageDescription" = "La traducción de voz instantánea necesita acceso a la grabación del audio del sistema para traducir en tiempo real el audio del equipo y de las aplicaciones.";

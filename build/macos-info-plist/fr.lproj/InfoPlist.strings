@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "La traduction vocale instantanée nécessite l'accès au microphone pour traduire la parole en temps réel.";
+"NSAudioCaptureUsageDescription" = "La traduction vocale instantanée nécessite l’accès à l’enregistrement audio du système pour traduire en temps réel le son de l’ordinateur et des applications.";

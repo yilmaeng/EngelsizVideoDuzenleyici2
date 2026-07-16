@@ -1,0 +1,55 @@
+{
+  "appId": "com.engelsiz.instantvoicetranslation",
+  "productName": "Anlık Sesli Çeviri",
+  "extraMetadata": {
+    "name": "anlik-sesli-ceviri",
+    "version": "3.0.0",
+    "description": "Gemini Live destekli taşınabilir anlık sesli çeviri aracı"
+  },
+  "copyright": "© 2025-2026 Engin Yılmaz",
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "Start_icon.ico",
+    "artifactName": "Anlik-Sesli-Ceviri-Portable-v${version}.${ext}"
+  },
+  "files": [
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/renderer/instant-voice-translation.html",
+    "src/renderer/scripts/i18n.js",
+    "src/renderer/scripts/instant-voice-translation-standalone.js",
+    "src/renderer/styles/main.css",
+    "src/renderer/styles/instant-voice-translation.css",
+    "src/locales/**/*",
+    "tools/EvdProcessLoopbackCapture/bin/Release/net8.0-windows/win-x64/publish/**/*",
+    "Start_icon.png",
+    "Start_icon.ico",
+    "package.json",
+    "!src/resources/**/*",
+    "!src/test/**/*",
+    "!**/*.md",
+    "!**/*.map",
+    "!**/*.log",
+    "!**/backup_*/**/*",
+    "!**/.agent/**/*"
+  ],
+  "asarUnpack": [
+    "tools/EvdProcessLoopbackCapture/bin/Release/net8.0-windows/win-x64/publish/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "tools/EvdProcessLoopbackCapture/bin/Release/net8.0-windows/win-x64/publish",
+      "to": "native-audio"
+    }
+  ],
+  "asar": true,
+  "npmRebuild": false,
+  "publish": null
+}

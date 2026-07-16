@@ -1,0 +1,102 @@
+name: Build Signed Instant Voice Translation macOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - instant-voice-translation-macos
+
+jobs:
+  build-signed-dmg:
+    runs-on: macos-14
+    env:
+      MAC_CERTIFICATE_P12_BASE64: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
+      MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+      MAC_KEYCHAIN_PASSWORD: ${{ secrets.MAC_KEYCHAIN_PASSWORD }}
+      MAC_SIGNING_IDENTITY: ${{ secrets.MAC_SIGNING_IDENTITY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Require signing secrets
+        run: |
+          for name in MAC_CERTIFICATE_P12_BASE64 MAC_CERTIFICATE_PASSWORD MAC_KEYCHAIN_PASSWORD MAC_SIGNING_IDENTITY; do
+            if [ -z "${!name}" ]; then
+              echo "Required signing secret is missing: $name"
+              exit 1
+            fi
+          done
+          echo "EVD_MAC_SIGNING_ENABLED=1" >> "$GITHUB_ENV"
+          echo "EVD_MAC_SIGN_IDENTITY=$MAC_SIGNING_IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Import Developer ID certificate
+        run: |
+          CERTIFICATE_PATH="$RUNNER_TEMP/evd_developer_id.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/evd-signing.keychain-db"
+          echo -n "$MAC_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$MAC_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$MAC_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$MAC_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed s/\"//g)
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$MAC_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate macOS package
+        run: npm run test:instant-voice-translation:mac
+
+      - name: Build signed ARM64 DMG
+        run: npm run build:instant-voice-translation:mac
+
+      - name: Verify application signature
+        run: |
+          APP_PATH="$(find dist/mac-arm64 -maxdepth 1 -type d -name '*.app' -print -quit)"
+          if [ -z "$APP_PATH" ]; then
+            echo "Built application bundle was not found."
+            exit 1
+          fi
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          codesign -dvv "$APP_PATH"
+
+      - name: Sign, notarize, and staple DMG
+        env:
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          for name in APPLE_API_KEY_BASE64 APPLE_API_KEY_ID APPLE_API_ISSUER; do
+            if [ -z "${!name}" ]; then
+              echo "Required notarization secret is missing: $name"
+              exit 1
+            fi
+          done
+          DMG_PATH="$(find dist -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          if [ -z "$DMG_PATH" ]; then
+            echo "DMG output was not found."
+            exit 1
+          fi
+          API_KEY_PATH="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          echo -n "$APPLE_API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
+          codesign --force --sign "$MAC_SIGNING_IDENTITY" "$DMG_PATH"
+          xcrun notarytool submit "$DMG_PATH" --key "$API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
+          xcrun stapler staple "$DMG_PATH"
+          xcrun stapler validate "$DMG_PATH"
+          spctl --assess --type open --context context:primary-signature -vv "$DMG_PATH"
+
+      - name: Upload signed DMG
+        uses: actions/upload-artifact@v6
+        with:
+          name: anlik-sesli-ceviri-macos-arm64-signed
+          path: dist/*.dmg
+          if-no-files-found: error
+          retention-days: 14

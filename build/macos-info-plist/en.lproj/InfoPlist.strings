@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Instant Voice Translation needs microphone access to translate speech in real time.";
+"NSAudioCaptureUsageDescription" = "Instant Voice Translation needs system audio recording access to translate computer and application audio in real time.";

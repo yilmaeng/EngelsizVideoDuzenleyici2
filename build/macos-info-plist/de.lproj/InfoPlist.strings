@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Die Sofortübersetzung benötigt Mikrofonzugriff, um Sprache in Echtzeit zu übersetzen.";
+"NSAudioCaptureUsageDescription" = "Die Sofortübersetzung benötigt Zugriff auf die Systemaudioaufnahme, um Computer- und App-Audio in Echtzeit zu übersetzen.";
