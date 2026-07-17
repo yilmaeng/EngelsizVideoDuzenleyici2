@@ -28,6 +28,10 @@ function isInstantVoiceTranslationOnlyMode() {
         || appName.includes('instantvoicetranslation');
 }
 
+if (isInstantVoiceTranslationOnlyMode()) {
+    Menu.setApplicationMenu(null);
+}
+
 function isPortableMode() {
     return Boolean(process.env.PORTABLE_EXECUTABLE_FILE);
 }

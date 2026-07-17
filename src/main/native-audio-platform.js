@@ -62,6 +62,20 @@ function getStaticCapabilities() {
             sourceList: true
         };
     }
+    if (process.platform === 'darwin') {
+        return {
+            success: true,
+            supported: !!helperPath,
+            helperAvailable: !!helperPath,
+            minimumSystemVersion: MAC_MINIMUM_VERSION,
+            systemAudio: !!helperPath,
+            applicationAudio: !!helperPath,
+            microphone: false,
+            sessionVolume: false,
+            websocket: !!helperPath,
+            sourceList: !!helperPath
+        };
+    }
     return {
         success: true,
         supported: false,

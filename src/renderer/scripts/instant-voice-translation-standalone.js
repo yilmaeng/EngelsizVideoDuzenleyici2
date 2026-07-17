@@ -2069,7 +2069,12 @@
             }));
             renderState();
         });
-        el('instant-voice-translation-source')?.addEventListener('change', updateSourceControls);
+        el('instant-voice-translation-source')?.addEventListener('change', () => {
+            updateSourceControls();
+            if (el('instant-voice-translation-source')?.value === 'native-window-audio') {
+                refreshWindowSources().catch(() => {});
+            }
+        });
         el('instant-voice-translation-incoming-source')?.addEventListener('change', updateSourceControls);
         el('instant-voice-translation-conversation-mode')?.addEventListener('change', updateSourceControls);
         el('instant-voice-translation-text-only')?.addEventListener('change', renderState);
