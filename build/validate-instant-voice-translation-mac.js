@@ -3,7 +3,7 @@ const path = require('path');
 const { TextDecoder } = require('util');
 const root = path.resolve(__dirname, '..');
 const locales = ['tr', 'en', 'de', 'es', 'fr'];
-const required = ['start_with_shortcut', 'startup_intro_mac', 'hide_to_menu_bar', 'hide_to_menu_bar_status', 'hide_to_menu_bar_failed', 'mac_microphone_only_hint', 'mac_native_audio_ready_hint', 'mac_native_audio_unavailable_hint', 'mac_microphone_capture_failed'];
+const required = ['start_with_shortcut', 'startup_intro_mac', 'hide_to_menu_bar', 'hide_to_menu_bar_status', 'hide_to_menu_bar_failed', 'mac_microphone_only_hint', 'mac_native_audio_ready_hint', 'mac_native_audio_probe_failed_hint', 'mac_native_audio_unavailable_hint', 'mac_microphone_capture_failed'];
 
 function readUtf8(file) {
     return new TextDecoder('utf-8', { fatal: true }).decode(fs.readFileSync(file));
@@ -64,5 +64,19 @@ for (const locale of locales) {
     if (!readUtf8(file).includes('NSAudioCaptureUsageDescription')) {
         throw new Error(locale + ': EVD system audio permission text is missing');
     }
+}
+const nativeAudioPlatformSource = readUtf8(path.join(root, 'src', 'main', 'native-audio-platform.js'));
+for (const marker of ['probeSuccess', 'probeError', 'probeDiagnostics', '[NativeAudio] capability probe failed', '[NativeAudio] source list failed']) {
+    if (!nativeAudioPlatformSource.includes(marker)) {
+        throw new Error('native audio diagnostics marker is missing: ' + marker);
+    }
+}
+const standaloneSource = readUtf8(path.join(root, 'src', 'renderer', 'scripts', 'instant-voice-translation-standalone.js'));
+if (!standaloneSource.includes("result?.success === false") || !standaloneSource.includes('mac_native_audio_probe_failed_hint')) {
+    throw new Error('renderer native audio diagnostics are missing');
+}
+const standaloneHtml = readUtf8(path.join(root, 'src', 'renderer', 'instant-voice-translation.html'));
+if (!standaloneHtml.includes('id="instant-voice-translation-service" size="2"') || !standaloneHtml.includes('id="instant-voice-translation-source" size="3"')) {
+    throw new Error('VoiceOver list boxes are missing');
 }
 console.log('Instant Voice Translation macOS validation passed.');

@@ -2613,6 +2613,7 @@
       "mac_microphone_only_hint": "Bilgisayar ve uygulama sesi desteği, uygun Mac ses yardımcısı bulunduğunda etkinleştirilir.",
       "mac_microphone_capture_failed": "Mikrofon başlatılamadı: {error}",
       "mac_native_audio_ready_hint": "Mac sürümünde bilgisayar ve uygulama sesi etkin. Karşılıklı konuşma için sanal ses yönlendirme desteği henüz eklenmemiştir.",
+      "mac_native_audio_probe_failed_hint": "Mac ses yardımcısı kullanılamıyor: {error}. Ayrıntılar uygulama günlüğüne kaydedildi.",
       "mac_native_audio_unavailable_hint": "Bilgisayar ve uygulama sesi için macOS 14.2 veya üzeri ve imzalı EVD ses yardımcısı gereklidir. Şimdilik mikrofon kullanılabilir."
     },
     "fine_tune": {

@@ -295,6 +295,9 @@
                 fetchWindowIcons: false,
                 thumbnailSize: { width: 0, height: 0 }
             });
+        if (IS_MAC && result?.success === false) {
+            throw new Error(result.error || 'native_audio_source_list_failed');
+        }
         const sources = (Array.isArray(result?.sources) ? result.sources : [])
             .map((source) => ({
                 id: String(source.id || ''),
@@ -627,11 +630,18 @@
         }
         const nativeAudioReady = state.nativeAudioCapabilities.systemAudio === true
             && state.nativeAudioCapabilities.applicationAudio === true;
+        const probeFailed = state.nativeAudioCapabilities.probeSuccess === false;
+        const probeError = String(state.nativeAudioCapabilities.probeError || 'native_audio_helper_failed');
         const hint = el('instant-voice-translation-mac-limit-hint');
         if (hint) {
-            hint.textContent = nativeAudioReady
-                ? t('dialog.instant_voice_translation.mac_native_audio_ready_hint', 'Mac sürümünde bilgisayar ve uygulama sesi etkin. Karşılıklı konuşma için sanal ses yönlendirme desteği henüz eklenmemiştir.')
-                : t('dialog.instant_voice_translation.mac_native_audio_unavailable_hint', 'Bilgisayar ve uygulama sesi için macOS 14.2 veya üzeri ve imzalı EVD ses yardımcısı gereklidir. Şimdilik mikrofon kullanılabilir.');
+            hint.textContent = probeFailed
+                ? t('dialog.instant_voice_translation.mac_native_audio_probe_failed_hint', 'Mac ses yardımcısı kullanılamıyor: {error}', { error: probeError })
+                : nativeAudioReady
+                    ? t('dialog.instant_voice_translation.mac_native_audio_ready_hint', 'Mac sürümünde bilgisayar ve uygulama sesi etkin. Karşılıklı konuşma için sanal ses yönlendirme desteği henüz eklenmemiştir.')
+                    : t('dialog.instant_voice_translation.mac_native_audio_unavailable_hint', 'Bilgisayar ve uygulama sesi için macOS 14.2 veya üzeri ve imzalı EVD ses yardımcısı gereklidir. Şimdilik mikrofon kullanılabilir.');
+            if (probeFailed) {
+                announce(hint.textContent);
+            }
             hint.classList.remove('hidden');
         }
     }
@@ -2072,7 +2082,11 @@
         el('instant-voice-translation-source')?.addEventListener('change', () => {
             updateSourceControls();
             if (el('instant-voice-translation-source')?.value === 'native-window-audio') {
-                refreshWindowSources().catch(() => {});
+                refreshWindowSources().catch((error) => {
+                    setStatus(t('dialog.instant_voice_translation.window_refresh_failed', 'Pencere listesi alınamadı: {error}', {
+                        error: error?.message || error
+                    }));
+                });
             }
         });
         el('instant-voice-translation-incoming-source')?.addEventListener('change', updateSourceControls);

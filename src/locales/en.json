@@ -2611,6 +2611,7 @@
       "mac_microphone_only_hint": "Computer and application audio are enabled when a compatible Mac audio helper is available.",
       "mac_microphone_capture_failed": "Could not start the microphone: {error}",
       "mac_native_audio_ready_hint": "Computer and application audio are enabled on Mac. Virtual audio routing for conversation mode is not available yet.",
+      "mac_native_audio_probe_failed_hint": "The Mac audio helper is unavailable: {error}. Details were saved to the application log.",
       "mac_native_audio_unavailable_hint": "Computer and application audio require macOS 14.2 or later and the signed EVD audio helper. Microphone input remains available."
     },
     "fine_tune": {

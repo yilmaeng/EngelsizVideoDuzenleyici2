@@ -3257,6 +3257,7 @@
       "mac_microphone_only_hint": "Le son de l’ordinateur et des applications est activé lorsqu’un assistant audio Mac compatible est disponible.",
       "mac_microphone_capture_failed": "Impossible de démarrer le microphone : {error}",
       "mac_native_audio_ready_hint": "Le son de l’ordinateur et des applications est activé sur Mac. Le routage audio virtuel du mode conversation n’est pas encore disponible.",
+      "mac_native_audio_probe_failed_hint": "L’assistant audio Mac n’est pas disponible : {error}. Les détails ont été enregistrés dans le journal de l’application.",
       "mac_native_audio_unavailable_hint": "Le son de l’ordinateur et des applications nécessite macOS 14.2 ou version ultérieure et l’assistant audio EVD signé. Le microphone reste disponible."
     },
     "fine_tune": {

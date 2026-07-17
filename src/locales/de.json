@@ -3257,6 +3257,7 @@
       "mac_microphone_only_hint": "Computer- und App-Audio werden aktiviert, wenn ein kompatibler Mac-Audiohelfer verfügbar ist.",
       "mac_microphone_capture_failed": "Das Mikrofon konnte nicht gestartet werden: {error}",
       "mac_native_audio_ready_hint": "Computer- und App-Audio sind auf dem Mac aktiviert. Virtuelles Audio-Routing für den Gesprächsmodus ist noch nicht verfügbar.",
+      "mac_native_audio_probe_failed_hint": "Der Mac-Audiohelfer ist nicht verfügbar: {error}. Einzelheiten wurden im Anwendungsprotokoll gespeichert.",
       "mac_native_audio_unavailable_hint": "Computer- und App-Audio erfordern macOS 14.2 oder neuer und den signierten EVD-Audiohelfer. Das Mikrofon bleibt verfügbar."
     },
     "fine_tune": {

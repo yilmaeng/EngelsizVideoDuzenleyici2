@@ -3257,6 +3257,7 @@
       "mac_microphone_only_hint": "El audio del equipo y de aplicaciones se activa cuando hay disponible un asistente de audio compatible para Mac.",
       "mac_microphone_capture_failed": "No se pudo iniciar el micrófono: {error}",
       "mac_native_audio_ready_hint": "El audio del equipo y de aplicaciones está activado en Mac. El enrutamiento de audio virtual para el modo conversación aún no está disponible.",
+      "mac_native_audio_probe_failed_hint": "El asistente de audio para Mac no está disponible: {error}. Los detalles se guardaron en el registro de la aplicación.",
       "mac_native_audio_unavailable_hint": "El audio del equipo y de aplicaciones requiere macOS 14.2 o posterior y el asistente de audio EVD firmado. El micrófono sigue disponible."
     },
     "fine_tune": {

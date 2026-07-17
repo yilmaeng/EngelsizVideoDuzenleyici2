@@ -46,6 +46,23 @@ function resolveNativeAudioHelperPath() {
     ];
     return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
 }
+function describeExecError(error) {
+    return {
+        message: error?.message || String(error),
+        code: error?.code ?? '',
+        signal: error?.signal || '',
+        killed: error?.killed === true,
+        stderr: String(error?.stderr || '').trim()
+    };
+}
+
+function primaryExecError(diagnostics) {
+    return diagnostics.stderr
+        || diagnostics.message
+        || (diagnostics.code ? String(diagnostics.code) : '')
+        || 'native_audio_helper_failed';
+}
+
 
 function getStaticCapabilities() {
     const helperPath = resolveNativeAudioHelperPath();
@@ -93,16 +110,40 @@ function getStaticCapabilities() {
 async function getNativeAudioCapabilities() {
     const fallback = getStaticCapabilities();
     const helperPath = resolveNativeAudioHelperPath();
-    if (process.platform !== 'darwin' || !helperPath) return fallback;
+    if (process.platform !== 'darwin') return fallback;
+    if (!helperPath) {
+        console.warn('[NativeAudio] helper missing', {
+            resourcesPath: process.resourcesPath || '',
+            cwd: process.cwd()
+        });
+        return {
+            ...fallback,
+            probeSuccess: false,
+            probeError: 'native_audio_helper_missing'
+        };
+    }
     try {
         const { stdout } = await execFileAsync(helperPath, ['--capabilities'], {
             encoding: 'utf8',
             timeout: 5000,
             maxBuffer: 256 * 1024
         });
-        return { ...fallback, ...JSON.parse(String(stdout || '').trim()), helperAvailable: true };
+        return {
+            ...fallback,
+            ...JSON.parse(String(stdout || '').trim()),
+            helperAvailable: true,
+            probeSuccess: true,
+            probeError: ''
+        };
     } catch (error) {
-        return { ...fallback, error: error?.message || String(error) };
+        const diagnostics = describeExecError(error);
+        console.warn('[NativeAudio] capability probe failed', { helperPath, ...diagnostics });
+        return {
+            ...fallback,
+            probeSuccess: false,
+            probeError: primaryExecError(diagnostics),
+            probeDiagnostics: diagnostics
+        };
     }
 }
 
@@ -120,7 +161,14 @@ async function listNativeAudioSources() {
         const parsed = JSON.parse(String(stdout || '').trim());
         return { success: parsed?.success !== false, sources: Array.isArray(parsed?.sources) ? parsed.sources : [] };
     } catch (error) {
-        return { success: false, sources: [], error: error?.message || String(error) };
+        const diagnostics = describeExecError(error);
+        console.warn('[NativeAudio] source list failed', { helperPath, ...diagnostics });
+        return {
+            success: false,
+            sources: [],
+            error: primaryExecError(diagnostics),
+            diagnostics
+        };
     }
 }
 
