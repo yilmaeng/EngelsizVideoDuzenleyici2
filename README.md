@@ -1,5 +1,7 @@
 # 🎬 Engelsiz Video Düzenleyicisi
 
+> Anlık Sesli Çeviri'nin Windows ve macOS geliştirme bilgileri için [platformlar arası geliştirme rehberine](INSTANT_VOICE_TRANSLATION_DEVELOPMENT.md) bakın.
+
 Görme engelli kullanıcılar için tasarlanmış, tamamen klavye ile kontrol edilebilen erişilebilir video düzenleme programı.
 
 ![Sürüm](https://img.shields.io/badge/sürüm-2.1.0-blue)

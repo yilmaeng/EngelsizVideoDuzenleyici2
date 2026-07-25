@@ -6,6 +6,11 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+if ([string]::IsNullOrWhiteSpace($Version) -or $Version -match '^%.*%$') {
+    $package = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json
+    $Version = [string]$package.version
+}
+
 $builder = Join-Path $projectRoot 'node_modules\.bin\electron-builder.cmd'
 $config = Join-Path $PSScriptRoot 'instant-voice-translation-builder.json'
 $distDir = Join-Path $projectRoot 'dist'

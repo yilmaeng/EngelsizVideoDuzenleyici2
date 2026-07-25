@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - instant-voice-translation-macos
+      - instant-voice-translation-cross-platform
 
 jobs:
   build-signed-dmg:
