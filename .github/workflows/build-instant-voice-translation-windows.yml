@@ -37,3 +37,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: anlik-sesli-ceviri-windows-x64
+          path: dist/
+          if-no-files-found: error
