@@ -79,4 +79,10 @@ const standaloneHtml = readUtf8(path.join(root, 'src', 'renderer', 'instant-voic
 if (!standaloneHtml.includes('id="instant-voice-translation-service" size="2"') || !standaloneHtml.includes('id="instant-voice-translation-source" size="3"')) {
     throw new Error('VoiceOver list boxes are missing');
 }
+const mainProcessSource = readUtf8(path.join(root, 'src', 'main', 'index.js'));
+for (const marker of ['installInstantTranslationEditingShortcuts', "'paste'", "'copy'", "'cut'", "'selectAll'", "'redo'", "'undo'"]) {
+    if (!mainProcessSource.includes(marker)) {
+        throw new Error('macOS editing shortcut marker is missing: ' + marker);
+    }
+}
 console.log('Instant Voice Translation macOS validation passed.');

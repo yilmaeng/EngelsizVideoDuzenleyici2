@@ -35,6 +35,28 @@ if (isInstantVoiceTranslationOnlyMode()) {
 function isPortableMode() {
     return Boolean(process.env.PORTABLE_EXECUTABLE_FILE);
 }
+function installInstantTranslationEditingShortcuts(targetWindow) {
+    if (process.platform !== 'darwin' || !targetWindow?.webContents) {
+        return;
+    }
+
+    targetWindow.webContents.on('before-input-event', (event, input) => {
+        if (input.type !== 'keyDown' || !input.meta || input.control || input.alt || input.isComposing) {
+            return;
+        }
+
+        const key = String(input.key || '').toLowerCase();
+        const actions = { v: 'paste', c: 'copy', x: 'cut', a: 'selectAll' };
+        const action = key === 'z' ? (input.shift ? 'redo' : 'undo') : actions[key];
+        if (!action || typeof targetWindow.webContents[action] !== 'function') {
+            return;
+        }
+
+        event.preventDefault();
+        targetWindow.webContents[action]();
+    });
+}
+
 
 function translateOrFallback(key, fallback) {
     const value = i18n.t(key);
@@ -347,6 +369,10 @@ function createWindow() {
         titleBarStyle: 'default',
         autoHideMenuBar: false
     });
+
+    if (instantTranslationOnly) {
+        installInstantTranslationEditingShortcuts(mainWindow);
+    }
 
     mainWindow.loadFile(path.join(__dirname, instantTranslationOnly
         ? '../renderer/instant-voice-translation.html'
